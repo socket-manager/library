@@ -49,6 +49,11 @@ enum FailureEnum: int
      */
     case NON_EXISTENT_CLASS = 60;
 
+    /**
+     * @var int 存在するファイル
+     */
+    case EXISTING_FILE = 70;
+
 
     //--------------------------------------------------------------------------
     // メソッド
@@ -73,7 +78,8 @@ enum FailureEnum: int
                 self::EXISTING_ENUM => '出力先のEnumファイルが既に存在します',
                 self::ARGUMENT_QUESTION_FAIL => '"?"有りの引数の後ろに"?"無しの引数は追加できません',
                 self::NO_CLASS_NAME => 'クラス名が指定されていません',
-                self::NON_EXISTENT_CLASS => '指定されたクラスファイルが存在しません'
+                self::NON_EXISTENT_CLASS => '指定されたクラスファイルが存在しません',
+                self::EXISTING_FILE => '出力先のファイルが既に存在します'
             };
         }
         else
@@ -86,7 +92,8 @@ enum FailureEnum: int
                 self::EXISTING_ENUM => 'The destination enum file already exists',
                 self::ARGUMENT_QUESTION_FAIL => 'Arguments without "?" cannot be added after arguments with "?"',
                 self::NO_CLASS_NAME => 'class name not specified',
-                self::NON_EXISTENT_CLASS => 'Specified class file does not exist'
+                self::NON_EXISTENT_CLASS => 'Specified class file does not exist',
+                self::EXISTING_FILE => 'Output file already exists'
             };
         }
 

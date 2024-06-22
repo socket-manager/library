@@ -44,6 +44,11 @@ enum CraftEnum: string
      */
     case MAIN = 'main';
 
+    /**
+     * @var 設定ファイル
+     */
+    case SETTING = 'setting';
+
 
     //--------------------------------------------------------------------------
     // メソッド
@@ -62,7 +67,8 @@ enum CraftEnum: string
             self::PARAMETER => 'UnitParameter',
             self::PROTOCOL => 'ProtocolUnits',
             self::COMMAND => 'CommandUnits',
-            self::MAIN => 'MainClass'
+            self::MAIN => 'MainClass',
+            self::SETTING => 'setting'
         };
     }
 
@@ -79,7 +85,8 @@ enum CraftEnum: string
             self::PARAMETER => 'ParameterForTemplate',
             self::PROTOCOL => 'ProtocolForTemplate',
             self::COMMAND => 'CommandForTemplate',
-            self::MAIN => 'MainForTemplate'
+            self::MAIN => 'MainForTemplate',
+            self::SETTING => 'SettingForTemplate'
         };
     }
 

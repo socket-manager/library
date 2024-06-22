@@ -106,6 +106,7 @@ EOD;
   \033[32mcraft:protocol\033[m <プロトコルUNIT定義のクラス名>   プロトコルUNIT定義のクラスとステータス名Enumの生成
   \033[32mcraft:command\033[m <コマンドUNIT定義のクラス名>      コマンドUNIT定義のクラスとキュー／ステータス名Enumの生成
   \033[32mcraft:main\033[m <メイン処理のクラス名>               メイン処理クラスの生成
+  \033[32mcraft:setting\033[m <設定ファイル名>                  設定ファイルの生成
 
 EOD,
                 self::LARAVEL =>
@@ -134,6 +135,7 @@ EOD,
   \033[32mcraft:protocol\033[m <Class name of protocol UNIT definition> Generate class and status name Enum for protocol UNIT definition
   \033[32mcraft:command\033[m <Command UNIT definition class name>      Generate command UNIT definition class and queue/status name Enum
   \033[32mcraft:main\033[m <Main processing class name>                 Generating main processing class
+  \033[32mcraft:setting\033[m <configuration file name>                 Generate configuration file
 
 EOD,
                 self::LARAVEL =>

@@ -71,6 +71,12 @@ class Worker
      */
     private SuccessEnum $success_sub_enum;
 
+    /**
+     * @var array $settings 設定ファイルの読み込み先
+     */
+    public static array $settings = [];
+
+
     //--------------------------------------------------------------------------
     // メソッド
     //--------------------------------------------------------------------------
@@ -233,6 +239,8 @@ laravel_check:
                 $msg->display();
                 return false;
             }
+            $this->loadSetting();   // 設定ファイルの読み込み
+            $this->loadHelper();    // ヘルパーの読み込み
             $this->console->exec();
             return true;
         }
@@ -278,12 +286,23 @@ laravel_check:
         // パスの生成
         $dir = $this->craft_enum->directory();
         $full_path = $this->path.$p_sep.'app'.$p_sep.$dir;
+        if($this->craft_enum === CraftEnum::SETTING)
+        {
+            $full_path = $this->path.$p_sep.$dir;
+        }
 
         // ファイル存在チェック
         $create_file = $full_path.$p_sep.$this->params[2].'.php';
         if(file_exists($create_file))
         {
-            FailureEnum::EXISTING_CLASS->display($this->params[2]);
+            if($this->craft_enum === CraftEnum::SETTING)
+            {
+                FailureEnum::EXISTING_FILE->display($this->params[2]);
+            }
+            else
+            {
+                FailureEnum::EXISTING_CLASS->display($this->params[2]);
+            }
             return false;
         }
 
@@ -520,6 +539,38 @@ laravel_check:
 
             // インスタンスリストへ追加
             $this->consoles[] = new $class($this->params);
+        }
+    }
+
+    /**
+     * 設定ファイルの読み込み
+     * 
+     * @param string $p_sep ディレクトリセパレータ
+     */
+    private function loadSetting(string $p_sep = DIRECTORY_SEPARATOR)
+    {
+        $file_path = "{$this->path}{$p_sep}setting{$p_sep}";
+        $file_list = glob("{$file_path}*.php");
+
+        // ファイルリストでループ
+        foreach($file_list as $file)
+        {
+            // ファイル名の取得
+            $pattern = "@\\{$p_sep}([^\\{$p_sep}]+).php$@";
+            preg_match($pattern, $file, $matches);
+            static::$settings[$matches[1]] = require("{$file_path}{$matches[1]}.php");
+        }
+    }
+
+    /**
+     * ヘルパーの読み込み
+     * 
+     */
+    private function loadHelper()
+    {
+        if($this->is_laravel === false)
+        {
+            require_once(__DIR__.DIRECTORY_SEPARATOR.'linkage_helpers.php');
         }
     }
 }

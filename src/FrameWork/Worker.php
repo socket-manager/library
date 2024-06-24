@@ -76,6 +76,11 @@ class Worker
      */
     public static array $settings = [];
 
+    /**
+     * @var string $lang 言語設定
+     */
+    public string $lang = 'ja';
+
 
     //--------------------------------------------------------------------------
     // メソッド
@@ -105,17 +110,36 @@ class Worker
      */
     public function working(): bool
     {
+        // ヘルパー関連の読み込み
+        if($this->is_laravel === false)
+        {
+            $this->loadSetting();   // 設定ファイルの読み込み
+            $this->loadHelper();    // ヘルパーの読み込み
+        }
+
+        // タイムゾーンの設定
+        $timezone = config('app.timezone', 'UTC');
+        date_default_timezone_set($timezone);
+
+        // 言語設定
+        $w_ret = config('app.locale', 'en');
+        if($w_ret !== 'ja' && $w_ret !== 'en')
+        {
+            $w_ret = 'en';
+        }
+        $this->lang = $w_ret;
+
         // Usage表示
         if(count($this->params) < 2)
         {
-            $usage = UsageEnum::HEADER->message();
+            $usage = UsageEnum::HEADER->message($this->lang);
 
             // Laravel環境の場合
             if($this->is_laravel === true)
             {
-                $usage .= UsageEnum::CRAFT->message();
-                $usage .= UsageEnum::LARAVEL->message();
-                $usage .= UsageEnum::SEPARATOR->message();
+                $usage .= UsageEnum::CRAFT->message($this->lang);
+                $usage .= UsageEnum::LARAVEL->message($this->lang);
+                $usage .= UsageEnum::SEPARATOR->message($this->lang);
                 printf($usage);
                 require_once($this->path.'/artisan');
                 return false;
@@ -125,7 +149,7 @@ class Worker
             $this->setMainClassList();
 
             // メインクラスのUsageを生成
-            $usage .= UsageEnum::MAIN->message();
+            $usage .= UsageEnum::MAIN->message($this->lang);
             foreach($this->consoles as $console)
             {
                 // コンソールクラスの設定
@@ -149,12 +173,12 @@ class Worker
             }
             if(count($this->consoles) <= 0)
             {
-                $usage .= UsageEnum::MAIN_EMPTY->message();
+                $usage .= UsageEnum::MAIN_EMPTY->message($this->lang);
             }
 
             // Usage表示
-            $usage .= UsageEnum::CRAFT->message();
-            $usage .= UsageEnum::LARAVEL->message();
+            $usage .= UsageEnum::CRAFT->message($this->lang);
+            $usage .= UsageEnum::LARAVEL->message($this->lang);
             printf($usage);
             return false;
         }
@@ -239,8 +263,6 @@ laravel_check:
                 $msg->display();
                 return false;
             }
-            $this->loadSetting();   // 設定ファイルの読み込み
-            $this->loadHelper();    // ヘルパーの読み込み
             $this->console->exec();
             return true;
         }

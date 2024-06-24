@@ -152,6 +152,10 @@ enum UnitExceptionEnum: int
      */
     public function message(string $p_lang = 'ja'): string
     {
+        if($p_lang !== 'ja' && $p_lang !== 'en')
+        {
+            $p_lang = 'en';
+        }
         if($p_lang === 'ja')
         {
             return match($this)

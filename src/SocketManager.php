@@ -262,14 +262,13 @@ class SocketManager
      * @param string $p_host 待ち受け用ホスト名
      * @param int $p_port 待ち受け用ポート番号
      * @param int $p_size 受信サイズ（recvメソッドのデフォルト受信サイズ）
-     * @param string $p_lang 言語コード
+     * @param int $p_limit 接続制限数
      */
     public function __construct
     (
         string $p_host = null,
         int $p_port = null,
         int $p_size = null,
-        string $p_lang = null,
         int $p_limit = null
     )
     {
@@ -291,25 +290,22 @@ class SocketManager
             $this->receive_buffer_size = $p_size;
         }
 
-        // 言語コードの設定
-        if($p_lang !== null)
-        {
-            $this->lang = $p_lang;
-        }
-
-        if($this->lang === 'ja')
-        {
-            date_default_timezone_set('Asia/Tokyo');
-        }
-
         // 制限接続数の設定
         if($p_limit !== null)
         {
             $this->limit_connection = $p_limit;
         }
 
+        // 言語設定
+        $w_ret = config('app.locale', 'en');
+        if($w_ret !== 'ja' && $w_ret !== 'en')
+        {
+            $w_ret = 'en';
+        }
+        $this->lang = $w_ret;
+
         // UNITパラメータの設定
-        $this->unit_parameter = new SocketManagerParameter();
+        $this->unit_parameter = new SocketManagerParameter($this->lang);
         $this->unit_parameter->setSocketManager($this);
 
         // 周期ドリブンマネージャーの設定

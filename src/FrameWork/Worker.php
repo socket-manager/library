@@ -110,19 +110,16 @@ class Worker
      */
     public function working(): bool
     {
-        // ヘルパー関連の読み込み
-        if($this->is_laravel === false)
-        {
-            $this->loadSetting();   // 設定ファイルの読み込み
-            $this->loadHelper();    // ヘルパーの読み込み
-        }
+        // 環境のロード
+        $this->loadSetting($this->is_laravel);   // 設定ファイルの読み込み
+        $this->loadHelper($this->is_laravel);    // ヘルパーの読み込み
 
         // タイムゾーンの設定
-        $timezone = config('app.timezone', 'UTC');
+        $timezone = self::getConfig('app.timezone', 'UTC');
         date_default_timezone_set($timezone);
 
         // 言語設定
-        $w_ret = config('app.locale', 'en');
+        $w_ret = self::getConfig('app.locale', 'en');
         if($w_ret !== 'ja' && $w_ret !== 'en')
         {
             $w_ret = 'en';
@@ -567,10 +564,20 @@ laravel_check:
     /**
      * 設定ファイルの読み込み
      * 
+     * @param bool $p_is_laravel Laravelフラグ true（Laravel） or false（Laravel以外）
      * @param string $p_sep ディレクトリセパレータ
      */
-    private function loadSetting(string $p_sep = DIRECTORY_SEPARATOR)
+    private function loadSetting(bool $p_is_laravel, string $p_sep = DIRECTORY_SEPARATOR)
     {
+        if($p_is_laravel === true)
+        {
+            $full_path = "{$this->path}{$p_sep}config{$p_sep}app.php";
+            $file_data = file_get_contents($full_path);
+            $file_data = str_replace('<?php', '', $file_data);
+            static::$settings['app'] = eval($file_data);
+            return;
+        }
+
         $file_path = "{$this->path}{$p_sep}setting{$p_sep}";
         $file_list = glob("{$file_path}*.php");
 
@@ -587,12 +594,36 @@ laravel_check:
     /**
      * ヘルパーの読み込み
      * 
+     * @param bool $p_is_laravel Laravelフラグ true（Laravel） or false（Laravel以外）
      */
-    private function loadHelper()
+    private function loadHelper(bool $p_is_laravel)
     {
-        if($this->is_laravel === false)
+        if($p_is_laravel === true)
         {
-            require_once(__DIR__.DIRECTORY_SEPARATOR.'linkage_helpers.php');
+            return;
         }
+        require_once(__DIR__.DIRECTORY_SEPARATOR.'linkage_helpers.php');
+    }
+
+    /**
+     * 設定値の取得
+     * 
+     * @param string $p_key 設定値のキー
+     * @param mixed $p_default 設定値がなかった時のデフォルト
+     * @return mixed 設定値
+     */
+    public static function getConfig(string $p_key, $p_default = null)
+    {
+        $keys = explode('.', $p_key);
+        $ret = static::$settings;
+        foreach($keys as $key)
+        {
+            if(!isset($ret[$key]))
+            {
+                return $p_default;
+            }
+            $ret = $ret[$key];
+        }
+        return $ret;
     }
 }

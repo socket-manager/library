@@ -81,6 +81,11 @@ class Worker
      */
     public string $lang = 'ja';
 
+    /**
+     * @var array $locales メッセージファイルの読み込み先
+     */
+    public static array $locales = [];
+
 
     //--------------------------------------------------------------------------
     // メソッド
@@ -111,8 +116,8 @@ class Worker
     public function working(): bool
     {
         // 環境のロード
-        $this->loadSetting($this->is_laravel);   // 設定ファイルの読み込み
-        $this->loadHelper($this->is_laravel);    // ヘルパーの読み込み
+        $this->loadSetting($this->is_laravel);  // 設定ファイルの読み込み
+        $this->loadHelper($this->is_laravel);   // ヘルパーの読み込み
 
         // タイムゾーンの設定
         $timezone = self::getConfig('app.timezone', 'UTC');
@@ -125,6 +130,9 @@ class Worker
             $w_ret = 'en';
         }
         $this->lang = $w_ret;
+
+        // メッセージファイルの読み込み
+        $this->loadLocale($this->is_laravel);
 
         // Usage表示
         if(count($this->params) < 2)
@@ -592,6 +600,32 @@ laravel_check:
     }
 
     /**
+     * メッセージファイルの読み込み
+     * 
+     * @param bool $p_is_laravel Laravelフラグ true（Laravel） or false（Laravel以外）
+     * @param string $p_sep ディレクトリセパレータ
+     */
+    private function loadLocale(bool $p_is_laravel, string $p_sep = DIRECTORY_SEPARATOR)
+    {
+        if($p_is_laravel === true)
+        {
+            return;
+        }
+
+        $file_path = "{$this->path}{$p_sep}locale{$p_sep}{$this->lang}{$p_sep}";
+        $file_list = glob("{$file_path}*.php");
+
+        // ファイルリストでループ
+        foreach($file_list as $file)
+        {
+            // ファイル名の取得
+            $pattern = "@\\{$p_sep}([^\\{$p_sep}]+).php$@";
+            preg_match($pattern, $file, $matches);
+            static::$locales[$matches[1]] = require("{$file_path}{$matches[1]}.php");
+        }
+    }
+
+    /**
      * ヘルパーの読み込み
      * 
      * @param bool $p_is_laravel Laravelフラグ true（Laravel） or false（Laravel以外）
@@ -621,6 +655,32 @@ laravel_check:
             if(!isset($ret[$key]))
             {
                 return $p_default;
+            }
+            $ret = $ret[$key];
+        }
+        return $ret;
+    }
+
+    /**
+     * メッセージの取得
+     * 
+     * @param string $p_key メッセージのキー
+     * @param array $p_placeholder プレースホルダ
+     * @return string メッセージ
+     */
+    public static function getMessage(string $p_key, array $p_placeholder = [])
+    {
+        $keys = explode('.', $p_key);
+        $ret = static::$locales;
+        foreach($keys as $key)
+        {
+            if(!isset($ret[$key]))
+            {
+                return $p_key;
+            }
+            foreach($p_placeholder as $name => $val)
+            {
+                $ret[$key] = str_replace($name, $val, $ret[$key]);
             }
             $ret = $ret[$key];
         }

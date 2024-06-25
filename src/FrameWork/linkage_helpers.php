@@ -17,3 +17,19 @@ if(!function_exists('config'))
         return $ret;
     }
 }
+
+if(!function_exists('__'))
+{
+    /**
+     * メッセージの取得
+     * 
+     * @param string $p_key メッセージのキー
+     * @param array $p_placeholder プレースホルダ
+     * @return string メッセージ
+     */
+    function __(string $p_key, array $p_placeholder = [])
+    {
+        $ret = Worker::getMessage($p_key, $p_placeholder);
+        return $ret;
+    }
+}

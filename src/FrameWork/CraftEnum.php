@@ -49,6 +49,11 @@ enum CraftEnum: string
      */
     case SETTING = 'setting';
 
+    /**
+     * @var メッセージ管理
+     */
+    case LOCALE = 'locale';
+
 
     //--------------------------------------------------------------------------
     // メソッド
@@ -68,7 +73,8 @@ enum CraftEnum: string
             self::PROTOCOL => 'ProtocolUnits',
             self::COMMAND => 'CommandUnits',
             self::MAIN => 'MainClass',
-            self::SETTING => 'setting'
+            self::SETTING => 'setting',
+            self::LOCALE => 'locale'
         };
     }
 
@@ -86,7 +92,8 @@ enum CraftEnum: string
             self::PROTOCOL => 'ProtocolForTemplate',
             self::COMMAND => 'CommandForTemplate',
             self::MAIN => 'MainForTemplate',
-            self::SETTING => 'SettingForTemplate'
+            self::SETTING => 'SettingForTemplate',
+            self::LOCALE => 'LocaleForTemplate'
         };
     }
 

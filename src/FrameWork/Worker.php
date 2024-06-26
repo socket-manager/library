@@ -137,14 +137,14 @@ class Worker
         // Usage表示
         if(count($this->params) < 2)
         {
-            $usage = UsageEnum::HEADER->message($this->lang);
+            $usage = UsageEnum::HEADER->message($this->is_laravel, $this->lang);
 
             // Laravel環境の場合
             if($this->is_laravel === true)
             {
-                $usage .= UsageEnum::CRAFT->message($this->lang);
-                $usage .= UsageEnum::LARAVEL->message($this->lang);
-                $usage .= UsageEnum::SEPARATOR->message($this->lang);
+                $usage .= UsageEnum::CRAFT->message($this->is_laravel, $this->lang);
+                $usage .= UsageEnum::LARAVEL->message($this->is_laravel, $this->lang);
+                $usage .= UsageEnum::SEPARATOR->message($this->is_laravel, $this->lang);
                 printf($usage);
                 require_once($this->path.'/artisan');
                 return false;
@@ -154,7 +154,7 @@ class Worker
             $this->setMainClassList();
 
             // メインクラスのUsageを生成
-            $usage .= UsageEnum::MAIN->message($this->lang);
+            $usage .= UsageEnum::MAIN->message($this->is_laravel, $this->lang);
             foreach($this->consoles as $console)
             {
                 // コンソールクラスの設定
@@ -178,12 +178,12 @@ class Worker
             }
             if(count($this->consoles) <= 0)
             {
-                $usage .= UsageEnum::MAIN_EMPTY->message($this->lang);
+                $usage .= UsageEnum::MAIN_EMPTY->message($this->is_laravel, $this->lang);
             }
 
             // Usage表示
-            $usage .= UsageEnum::CRAFT->message($this->lang);
-            $usage .= UsageEnum::LARAVEL->message($this->lang);
+            $usage .= UsageEnum::CRAFT->message($this->is_laravel, $this->lang);
+            $usage .= UsageEnum::LARAVEL->message($this->is_laravel, $this->lang);
             printf($usage);
             return false;
         }
@@ -205,7 +205,23 @@ class Worker
                 $cmd_nm = $cmd->name();
             }
         }
-        
+
+        // 実行できないコマンドの判定
+        if($this->is_laravel === true)
+        {
+            if($parts[1] === CraftEnum::SETTING->value || $parts[1] === CraftEnum::LOCALE->value)
+            {
+                $cmd_nm = null;
+            }
+        }
+        else
+        {
+            if($cmd_nm === CommandEnum::LARAVEL->value)
+            {
+                $cmd_nm = null;
+            }
+        }
+
         // 該当するコマンドがなかった時
         if($cmd_nm === null)
         {
@@ -265,14 +281,14 @@ laravel_check:
             $msg = $this->console->getErrorMessage();
             if($msg !== null)
             {
-                $msg->display();
+                $msg->display(null, $this->lang);
                 return false;
             }
             $this->console->exec();
             return true;
         }
 
-        FailureEnum::COMMAND_FAIL->display();
+        FailureEnum::COMMAND_FAIL->display(null, $this->lang);
         return false;
     }
 
@@ -288,7 +304,7 @@ laravel_check:
         // クラス名引数の存在チェック
         if(count($this->params) < 3)
         {
-            FailureEnum::NO_CLASS_NAME->display();
+            FailureEnum::NO_CLASS_NAME->display(null, $this->lang);
             return false;
         }
 
@@ -305,7 +321,7 @@ laravel_check:
         }
         if($craft_enum === null)
         {
-            FailureEnum::COMMAND_FAIL->display();
+            FailureEnum::COMMAND_FAIL->display(null, $this->lang);
             return false;
         }
         $this->craft_enum = $craft_enum;
@@ -317,23 +333,36 @@ laravel_check:
         {
             $full_path = $this->path.$p_sep.$dir;
         }
+        else
+        if($this->craft_enum === CraftEnum::LOCALE)
+        {
+            $full_path = $this->path.$p_sep.$dir.$p_sep.$this->lang;
+        }
 
         // ファイル存在チェック
         $create_file = $full_path.$p_sep.$this->params[2].'.php';
         if(file_exists($create_file))
         {
-            if($this->craft_enum === CraftEnum::SETTING)
+            if($this->craft_enum === CraftEnum::SETTING || $this->craft_enum === CraftEnum::LOCALE)
             {
-                FailureEnum::EXISTING_FILE->display($this->params[2]);
+                FailureEnum::EXISTING_FILE->display($this->params[2], $this->lang);
             }
             else
             {
-                FailureEnum::EXISTING_CLASS->display($this->params[2]);
+                FailureEnum::EXISTING_CLASS->display($this->params[2], $this->lang);
             }
             return false;
         }
 
         // ディレクトリ生成
+        if($this->craft_enum === CraftEnum::LOCALE)
+        {
+            $locale_path = $this->path.$p_sep.$dir;
+            if(is_dir($locale_path) === false)
+            {
+                mkdir($locale_path);
+            }
+        }
         if(is_dir($full_path) === false)
         {
             mkdir($full_path);
@@ -385,7 +414,7 @@ laravel_check:
             }
         }
         $this->success_enum = $success_enum;
-        $this->success_enum->display($this->params[2]);
+        $this->success_enum->display($this->params[2], $this->lang);
 
         // Enumファイル作成（キュー名）
         if($this->craft_enum->name === 'PROTOCOL' || $this->craft_enum->name === 'COMMAND')
@@ -394,7 +423,7 @@ laravel_check:
             $create_file = $full_path.$p_sep.$this->params[2].'QueueEnum.php';
             if(file_exists($create_file))
             {
-                FailureEnum::EXISTING_ENUM->display($this->params[2].'QueueEnum');
+                FailureEnum::EXISTING_ENUM->display($this->params[2].'QueueEnum', $this->lang);
                 return false;
             }
 
@@ -426,7 +455,7 @@ laravel_check:
             $create_file = $full_path.$p_sep.$this->params[2].'StatusEnum.php';
             if(file_exists($create_file))
             {
-                FailureEnum::EXISTING_ENUM->display($this->params[2].'StatusEnum');
+                FailureEnum::EXISTING_ENUM->display($this->params[2].'StatusEnum', $this->lang);
                 return false;
             }
 
@@ -465,7 +494,7 @@ laravel_check:
         // クラス名引数の存在チェック
         if(count($this->params) < 3)
         {
-            FailureEnum::NO_CLASS_NAME->display();
+            FailureEnum::NO_CLASS_NAME->display(null, $this->lang);
             return false;
         }
 
@@ -482,7 +511,7 @@ laravel_check:
         }
         if($laravel_enum === null)
         {
-            FailureEnum::COMMAND_FAIL->display();
+            FailureEnum::COMMAND_FAIL->display(null, $this->lang);
             return false;
         }
         $this->laravel_enum = $laravel_enum;
@@ -506,7 +535,7 @@ laravel_check:
         $dst_file = $dst_path.$p_sep.$this->params[2].'.php';
         if(file_exists($dst_file))
         {
-            FailureEnum::EXISTING_CLASS->display($this->params[2]);
+            FailureEnum::EXISTING_CLASS->display($this->params[2], $this->lang);
             return false;
         }
 
@@ -540,7 +569,7 @@ laravel_check:
             }
         }
         $this->success_enum = $success_enum;
-        $this->success_enum->display($this->params[2]);
+        $this->success_enum->display($this->params[2], $this->lang);
 
         return true;
     }
@@ -586,7 +615,7 @@ laravel_check:
             return;
         }
 
-        $file_path = "{$this->path}{$p_sep}setting{$p_sep}";
+        $file_path = "{$this->path}{$p_sep}".CraftEnum::SETTING->directory()."{$p_sep}";
         $file_list = glob("{$file_path}*.php");
 
         // ファイルリストでループ
@@ -612,7 +641,7 @@ laravel_check:
             return;
         }
 
-        $file_path = "{$this->path}{$p_sep}locale{$p_sep}{$this->lang}{$p_sep}";
+        $file_path = "{$this->path}{$p_sep}".CraftEnum::LOCALE->directory()."{$p_sep}{$this->lang}{$p_sep}";
         $file_list = glob("{$file_path}*.php");
 
         // ファイルリストでループ
@@ -680,7 +709,7 @@ laravel_check:
             }
             foreach($p_placeholder as $name => $val)
             {
-                $ret[$key] = str_replace($name, $val, $ret[$key]);
+                $ret[$key] = str_replace(':'.$name, $val, $ret[$key]);
             }
             $ret = $ret[$key];
         }

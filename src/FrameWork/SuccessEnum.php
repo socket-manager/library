@@ -70,6 +70,11 @@ enum SuccessEnum: string
     case SETTING = CraftEnum::SETTING->value;
 
     /**
+     * @var string メッセージファイル生成
+     */
+    case LOCALE = CraftEnum::LOCALE->value;
+
+    /**
      * @var string コマンドクラス生成（Laravel用）
      */
     case COMMAND_FOR_LARAVEL = 'command_for_laravel';
@@ -103,6 +108,7 @@ enum SuccessEnum: string
                 self::COMMAND_STATUS_ENUM => 'コマンドUNITのステータス名Enumの生成に成功しました',
                 self::MAIN => 'メイン処理クラスの生成に成功しました',
                 self::SETTING => '設定ファイルの生成に成功しました',
+                self::LOCALE => 'メッセージファイルの生成に成功しました',
                 self::COMMAND_FOR_LARAVEL => 'Laravelコマンドクラスの生成に成功しました'
             };
         }
@@ -121,6 +127,7 @@ enum SuccessEnum: string
                 self::COMMAND_STATUS_ENUM => 'Successfully generated status name Enum for command UNIT',
                 self::MAIN => 'Successfully generated main processing class',
                 self::SETTING => 'Successfully generated configuration file',
+                self::LOCALE => 'Successfully generated message file',
                 self::COMMAND_FOR_LARAVEL => 'Successfully generated Laravel command class'
             };
         }

@@ -43,6 +43,68 @@ EOD;
 EOD;
 
     /**
+     * @var string craftコマンド共通定義（日本語）
+     */
+    private const CONST_JA_CRAFT_FOR_LARAVEL =
+<<<EOD
+ \033[33mcraft\033[m
+  \033[32mcraft:init\033[m <初期化クラス名>                     初期化クラスの生成
+  \033[32mcraft:parameter\033[m <UNITパラメータクラス名>        UNITパラメータクラスの生成
+  \033[32mcraft:protocol\033[m <プロトコルUNIT定義のクラス名>   プロトコルUNIT定義のクラスとステータス名Enumの生成
+  \033[32mcraft:command\033[m <コマンドUNIT定義のクラス名>      コマンドUNIT定義のクラスとキュー／ステータス名Enumの生成
+  \033[32mcraft:main\033[m <メイン処理のクラス名>               メイン処理クラスの生成
+EOD;
+
+    /**
+     * @var string craftコマンド共通定義（英語）
+     */
+    private const CONST_EN_CRAFT_FOR_LARAVEL =
+<<<EOD
+ \033[33mcraft\033[m
+  \033[32mcraft:init\033[m <initialization class name>                  Generating initialization class
+  \033[32mcraft:parameter\033[m <UNIT parameter class name>             Generate UNIT parameter class
+  \033[32mcraft:protocol\033[m <Class name of protocol UNIT definition> Generate class and status name Enum for protocol UNIT definition
+  \033[32mcraft:command\033[m <Command UNIT definition class name>      Generate command UNIT definition class and queue/status name Enum
+  \033[32mcraft:main\033[m <Main processing class name>                 Generating main processing class
+EOD;
+
+    /**
+     * @var string craftコマンドオリジナル定義（日本語）
+     */
+    private const CONST_JA_CRAFT_NOT_LARAVEL =
+<<<EOD
+  \033[32mcraft:setting\033[m <設定ファイル名>                  設定ファイルの生成
+  \033[32mcraft:locale\033[m <メッセージファイル名>             メッセージファイルの生成
+EOD;
+
+    /**
+     * @var string craftコマンドオリジナル定義（英語）
+     */
+    private const CONST_EN_CRAFT_NOT_LARAVEL =
+<<<EOD
+  \033[32mcraft:setting\033[m <configuration file name>                 Generate configuration file
+  \033[32mcraft:locale\033[m <message file name>                        Generate message file
+EOD;
+
+    /**
+     * @var string laravelコマンド定義（日本語）
+     */
+    private const CONST_JA_LARAVEL_FOR_LARAVEL =
+<<<EOD
+ \033[33mlaravel\033[m
+  \033[32mlaravel:command\033[m <メイン処理のクラス名>          Laravelコマンドクラスの生成
+EOD;
+
+    /**
+     * @var string laravelコマンド定義（英語）
+     */
+    private const CONST_EN_LARAVEL_FOR_LARAVEL =
+<<<EOD
+ \033[33mlaravel\033[m
+  \033[32mlaravel:command\033[m <Main processing class name>            Generating Laravel command class
+EOD;
+
+    /**
      * @var int ヘッダ情報
      */
     case HEADER = 10;
@@ -88,62 +150,46 @@ EOD;
      * @param string $p_lang 言語
      * @return string メッセージ
      */
-    public function message(string $p_lang = 'ja'): string
+    public function message(bool $p_is_laravel, string $p_lang = 'ja'): string
     {
         if($p_lang === 'ja')
         {
+            $craft = self::CONST_JA_CRAFT_FOR_LARAVEL."\n";
+            $laravel = self::CONST_JA_LARAVEL_FOR_LARAVEL."\n";
+            if($p_is_laravel === false)
+            {
+                $craft .= self::CONST_JA_CRAFT_NOT_LARAVEL."\n";
+                $laravel = '';
+            }
             return match($this)
             {
                 self::HEADER => str_replace(':version', SystemEnum::VERSION->value, self::CONST_HEADER),
                 self::MAIN => " \033[33mmain\033[m\n",
                 self::MAIN_IDENTIFER => "  \033[32m:identifer\033[m",
                 self::MAIN_EMPTY => "  \033[34mEmpty...\033[m\n",
-                self::CRAFT =>
-<<<EOD
- \033[33mcraft\033[m
-  \033[32mcraft:init\033[m <初期化クラス名>                     初期化クラスの生成
-  \033[32mcraft:parameter\033[m <UNITパラメータクラス名>        UNITパラメータクラスの生成
-  \033[32mcraft:protocol\033[m <プロトコルUNIT定義のクラス名>   プロトコルUNIT定義のクラスとステータス名Enumの生成
-  \033[32mcraft:command\033[m <コマンドUNIT定義のクラス名>      コマンドUNIT定義のクラスとキュー／ステータス名Enumの生成
-  \033[32mcraft:main\033[m <メイン処理のクラス名>               メイン処理クラスの生成
-  \033[32mcraft:setting\033[m <設定ファイル名>                  設定ファイルの生成
-
-EOD,
-                self::LARAVEL =>
-<<<EOD
- \033[33mlaravel\033[m
-  \033[32mlaravel:command\033[m <メイン処理のクラス名>          Laravelコマンドクラスの生成
-
-EOD,
+                self::CRAFT => $craft,
+                self::LARAVEL => $laravel,
                 self::SEPARATOR => self::CONST_SEPARATOR
             };
         }
         else
         if($p_lang === 'en')
         {
+            $craft = self::CONST_EN_CRAFT_FOR_LARAVEL."\n";
+            $laravel = self::CONST_JA_LARAVEL_FOR_LARAVEL."\n";
+            if($p_is_laravel === false)
+            {
+                $craft .= self::CONST_EN_CRAFT_NOT_LARAVEL."\n";
+                $laravel = '';
+            }
             return match($this)
             {
                 self::HEADER => str_replace(':version', SystemEnum::VERSION->value, self::CONST_HEADER),
                 self::MAIN => " \033[33mmain\033[m\n",
                 self::MAIN_IDENTIFER => "  \033[32m:identifer\033[m",
                 self::MAIN_EMPTY => "  \033[34mEmpty...\033[m\n",
-                self::CRAFT =>
-<<<EOD
- \033[33mcraft\033[m
-  \033[32mcraft:init\033[m <initialization class name>                  Generating initialization class
-  \033[32mcraft:parameter\033[m <UNIT parameter class name>             Generate UNIT parameter class
-  \033[32mcraft:protocol\033[m <Class name of protocol UNIT definition> Generate class and status name Enum for protocol UNIT definition
-  \033[32mcraft:command\033[m <Command UNIT definition class name>      Generate command UNIT definition class and queue/status name Enum
-  \033[32mcraft:main\033[m <Main processing class name>                 Generating main processing class
-  \033[32mcraft:setting\033[m <configuration file name>                 Generate configuration file
-
-EOD,
-                self::LARAVEL =>
-<<<EOD
- \033[33mlaravel\033[m
-  \033[32mlaravel:command\033[m <Main processing class name>            Generating Laravel command class
-
-EOD,
+                self::CRAFT => $craft,
+                self::LARAVEL => $laravel,
                 self::SEPARATOR => self::CONST_SEPARATOR
             };
         }

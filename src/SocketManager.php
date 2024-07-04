@@ -166,6 +166,11 @@ class SocketManager
      * 'last_access_timestamp' => タイムスタンプ（int）,
      * 
      *------------------------------------------------------------------
+     * 強制ディスパッチフラグ
+     * 
+     * 'forced_dispatcher' => true（ディスパッチ実施） or false（実施しない）,
+     * 
+     *------------------------------------------------------------------
      * ユーザープロパティ（自由定義）
      * 
      * 'user_property' => プロパティ配列（array）,
@@ -651,6 +656,9 @@ class SocketManager
                         // 受信データを退避
                         $this->setProperties($cid, ['receive_buffer' => $dat]);
 
+                        // UNITの実行
+                        $this->unit_parameter->setKindString('command_names');
+
                         // コマンドディスパッチャーのコール
                         $fnc = $this->command_dispatcher;
                         $w_ret = false;
@@ -694,6 +702,7 @@ class SocketManager
             {
                 continue;
             }
+            $this->setProperties($cid, ['receive_buffer' => null]);
         }
 
         return true;
@@ -2284,7 +2293,15 @@ class SocketManager
         }
         else
         {
-            $this->descriptors[$p_cid][$p_kind]['status_name'] = StatusEnum::START->value;
+            if($p_kind === 'protocol_names')
+            {
+                $this->descriptors[$p_cid][$p_kind]['status_name'] = StatusEnum::START->value;
+            }
+            else
+            if($this->descriptors[$p_cid][$p_kind]['status_name'] === null)
+            {
+                $this->descriptors[$p_cid][$p_kind]['status_name'] = StatusEnum::START->value;
+            }
         }
 
         return true;
@@ -2299,6 +2316,22 @@ class SocketManager
      */
     private function isExecutingSequence(string $p_kind, string $p_cid): bool
     {
+        // 強制ディスパッチの実行
+        if($p_kind === 'command_names')
+        {
+            if($this->descriptors[$p_cid]['forced_dispatcher'] === true)
+            {
+                // １件もなければ抜ける
+                $cnt = count($this->descriptors[$p_cid]['receive_buffers']);
+                if($cnt <= 0)
+                {
+                    return true;
+                }
+                $this->descriptors[$p_cid]['forced_dispatcher'] = false;
+                return false;
+            }
+        }
+
         // キュー名の取得
         $que_nam = $this->descriptors[$p_cid][$p_kind]['queue_name'];
 
@@ -2439,6 +2472,9 @@ class SocketManager
 
         // アライブチェックタイムアウト調整用
         $this->descriptors[$cid]['alive_adjust_timeout'] = null;
+
+        // 強制ディスパッチフラグ
+        $this->descriptors[$cid]['forced_dispatcher'] = false;
 
         // ユーザープロパティ（自由定義）
         $this->descriptors[$cid]['user_property'] = [];

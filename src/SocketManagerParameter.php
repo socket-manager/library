@@ -136,6 +136,10 @@ class SocketManagerParameter implements IUnitParameter
             );
         }
 
+        if($w_ret === null)
+        {
+            return null;
+        }
         return $w_ret['receive_buffer'];
     }
 
@@ -637,6 +641,64 @@ class SocketManagerParameter implements IUnitParameter
     final public function setLanguage(string $p_lang)
     {
         $this->lang = $p_lang;
+        return;
+    }
+
+    /**
+     * 強制ディスパッチャーフラグの設定
+     * 
+     * @param bool true（強制ディスパッチ） or false（ディスパッチなし）
+     */
+    final public function setForcedDispatcher(bool $p_flag)
+    {
+        $w_ret = $this->manager->setProperties($this->cid, ['forced_dispatcher' => $p_flag]);
+        if($w_ret === false)
+        {
+            throw new UnitException(
+                UnitExceptionEnum::ECODE_PROPERTY_SET_FAIL->message(),
+                UnitExceptionEnum::ECODE_PROPERTY_SET_FAIL->value,
+                $this
+            );
+        }
+
+        return;
+    }
+
+    /**
+     * キューの切り替え
+     * 
+     * @param ?string $p_name キュー名（null時はアイドリングに戻す）
+     */
+    final public function changeQueue(?string $p_name)
+    {
+        $queue_name = null;
+        $status_name = null;
+        if($p_name !== null)
+        {
+            $queue_name = $p_name;
+            $status_name = StatusEnum::START->value;
+        }
+        $names =
+        [
+            'queue_name' => $queue_name,
+            'status_name' => $status_name
+        ];
+        $w_ret = $this->manager->setProperties($this->cid, [$this->kind => $names]);
+        if($w_ret === false)
+        {
+            throw new UnitException(
+                UnitExceptionEnum::ECODE_PROPERTY_SET_FAIL->message(),
+                UnitExceptionEnum::ECODE_PROPERTY_SET_FAIL->value,
+                $this
+            );
+        }
+
+        throw new UnitException(
+            UnitExceptionEnum::ECODE_THROW_BREAK->message(),
+            UnitExceptionEnum::ECODE_THROW_BREAK->value,
+            $this
+        );
+
         return;
     }
 

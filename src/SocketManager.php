@@ -825,7 +825,7 @@ class SocketManager
         }
 
         // 設定済みの場合は抜ける
-        if($nam === ProtocolQueueEnum::ALIVE->value && $w_ret['alive_adjust_timeout'] !== null)
+        if($nam === ProtocolQueueEnum::ALIVE->value && isset($w_ret['alive_adjust_timeout']))
         {
             return true;
         }

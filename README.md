@@ -6,6 +6,7 @@ SOCKET-MANAGER Frameworkのライブラリです。<br />
     <li><a href="https://github.com/socket-manager/demo-project">demo-project</a>（マインクラフトと連携できるWebsocketサーバーのデモ環境）</li>
     <li><a href="https://github.com/socket-manager/websocket-project">websocket-project</a>（Websocketサーバーの開発環境）</li>
     <li><a href="https://github.com/socket-manager/new-project">new-project</a>（新規プロジェクト開発環境）</li>
+    <li><a href="https://github.com/socket-manager/contents-project">contents-project</a>（マインクラフト専用のコンテンツ環境）</li>
 </ul>
 
 詳しい使い方は<a href="https://socket-manager.github.io/document/">こちら</a>をご覧ください。<br />

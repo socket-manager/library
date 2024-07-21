@@ -645,6 +645,26 @@ class SocketManagerParameter implements IUnitParameter
     }
 
     /**
+     * 強制ディスパッチャーフラグの取得
+     * 
+     * @return bool true（強制ディスパッチ） or false（ディスパッチなし）
+     */
+    final public function getForcedDispatcher()
+    {
+        $w_ret = $this->manager->getProperties($this->cid, ['forced_dispatcher']);
+        if($w_ret === false)
+        {
+            throw new UnitException(
+                UnitExceptionEnum::ECODE_PROPERTY_SET_FAIL->message(),
+                UnitExceptionEnum::ECODE_PROPERTY_SET_FAIL->value,
+                $this
+            );
+        }
+
+        return $w_ret['forced_dispatcher'];
+    }
+
+    /**
      * 強制ディスパッチャーフラグの設定
      * 
      * @param bool true（強制ディスパッチ） or false（ディスパッチなし）

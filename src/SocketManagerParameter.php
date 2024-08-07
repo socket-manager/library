@@ -530,7 +530,7 @@ class SocketManagerParameter implements IUnitParameter
      * テンポラリバッファの取得
      * 
      * @param array $p_prop プロパティ（キー）のリスト
-     * @param string $p_cid 接続ID
+     * @param ?string $p_cid 接続ID
      * @return mixed バッファデータ or null（空）
      */
     final public function getTempBuff(array $p_prop, string $p_cid = null)
@@ -559,11 +559,18 @@ class SocketManagerParameter implements IUnitParameter
      * テンポラリバッファの設定
      * 
      * @param array $p_prop プロパティのリスト
+     * @param ?string $p_cid 接続ID
      */
-    final public function setTempBuff(array $p_prop)
+    final public function setTempBuff(array $p_prop, string $p_cid = null)
     {
+        $cid = $this->cid;
+        if($p_cid !== null)
+        {
+            $cid = $p_cid;
+        }
+
         // ユーザープロパティの設定
-        $w_ret = $this->manager->setUserProperties($this->cid, $p_prop);
+        $w_ret = $this->manager->setUserProperties($cid, $p_prop);
         if($w_ret === false)
         {
             throw new UnitException(

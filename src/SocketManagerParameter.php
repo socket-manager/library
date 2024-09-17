@@ -147,11 +147,18 @@ class SocketManagerParameter implements IUnitParameter
      * 処理対象の受信データを設定
      * 
      * @param mixed 受信データ or null（データなし）
+     * @param ?string $p_cid 設定したい接続ID
      */
-    final public function setRecvData($p_dat)
+    final public function setRecvData($p_dat, string $p_cid = null)
     {
+        $cid = $this->cid;
+        if($p_cid !== null)
+        {
+            $cid = $p_cid;
+        }
+
         // ユーザープロパティの設定
-        $w_ret = $this->manager->setProperties($this->cid, ['receive_buffer' => $p_dat]);
+        $w_ret = $this->manager->setProperties($cid, ['receive_buffer' => $p_dat]);
         if($w_ret === false)
         {
             throw new UnitException(

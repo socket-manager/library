@@ -104,6 +104,6 @@ class InitForTemplate implements IInitSocketManager
      */
     public function getUnitParameter(): ?SocketManagerParameter
     {
-        return null;
+        return new SocketManagerParameter();
     }
 }

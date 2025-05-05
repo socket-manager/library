@@ -14,5 +14,7 @@ SOCKET-MANAGER Frameworkのライブラリです。<br />
 Laravelプロジェクトと連携する場合は<a href="https://socket-manager.github.io/document/laravel.html">こちら</a>をご覧ください。
 
 ## Contact Us
-
 バグ報告やご要望などは<a href="mailto:lib.tech.engineer@gmail.com">`こちら`</a>から受け付けております。
+
+## License
+MIT, see <a href="https://github.com/socket-manager/library/blob/main/LICENSE">LICENSE file</a>.

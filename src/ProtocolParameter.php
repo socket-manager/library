@@ -101,10 +101,10 @@ class ProtocolParameter implements IProtocolParameter
      * 受信バッファサイズ分を受信する
      * 
      * @param mixed &$p_recv 受信エリア
-     * @param int $p_size 受信サイズ
+     * @param ?int $p_size 受信サイズ
      * @return int 受信したサイズ
      */
-    final public function recv(&$p_recv, int $p_size = null): int
+    final public function recv(&$p_recv, ?int $p_size = null): int
     {
         // データ受信
         $cid = $this->param->getConnectionId();

@@ -264,17 +264,17 @@ class SocketManager
     /**
      * コンストラクタ
      * 
-     * @param string $p_host 待ち受け用ホスト名
-     * @param int $p_port 待ち受け用ポート番号
-     * @param int $p_size 受信サイズ（recvメソッドのデフォルト受信サイズ）
-     * @param int $p_limit 接続制限数
+     * @param ?string $p_host 待ち受け用ホスト名
+     * @param ?int $p_port 待ち受け用ポート番号
+     * @param ?int $p_size 受信サイズ（recvメソッドのデフォルト受信サイズ）
+     * @param ?int $p_limit 接続制限数
      */
     public function __construct
     (
-        string $p_host = null,
-        int $p_port = null,
-        int $p_size = null,
-        int $p_limit = null
+        ?string $p_host = null,
+        ?int $p_port = null,
+        ?int $p_size = null,
+        ?int $p_limit = null
     )
     {
         // ホスト名の設定
@@ -711,10 +711,10 @@ class SocketManager
     /**
      * 全接続IDを取得
      * 
-     * @param string $p_cid 除外する接続ID
+     * @param ?string $p_cid 除外する接続ID
      * @return array 接続IDのリスト
      */
-    public function getConnectionIdAll(string $p_cid = null): array
+    public function getConnectionIdAll(?string $p_cid = null): array
     {
         $dess = $this->descriptors;
 
@@ -1299,11 +1299,11 @@ class SocketManager
      * 
      * 引数のホスト名とポート番号の指定があれば、コンストラクタで設定された内容より優先されます
      * 
-     * @param string $p_host ホスト名
-     * @param int $p_port ポート番号
+     * @param ?string $p_host ホスト名
+     * @param ?int $p_port ポート番号
      * @return bool true（成功） or false（失敗）
      */
-    public function listen(string $p_host = null, int $p_port = null): bool
+    public function listen(?string $p_host = null, ?int $p_port = null): bool
     {
         //--------------------------------------------------------------------------
         // プロパティの設定
@@ -1374,11 +1374,11 @@ class SocketManager
      * 
      * 引数のホスト名とポート番号の指定があれば、コンストラクタで設定された内容より優先されます
      * 
-     * @param string $p_host ホスト名
-     * @param int $p_port ポート番号
+     * @param ?string $p_host ホスト名
+     * @param ?int $p_port ポート番号
      * @return bool true（成功） or false（失敗）
      */
-    public function bind(string $p_host = null, int $p_port = null): bool
+    public function bind(?string $p_host = null, ?int $p_port = null): bool
     {
         //--------------------------------------------------------------------------
         // プロパティの設定
@@ -1847,10 +1847,10 @@ class SocketManager
      * 
      * @param string $p_cid 接続ID
      * @param mixed &$p_recv 受信エリア
-     * @param int $p_size 受信サイズ（指定があればデフォルトサイズより優先される）
+     * @param ?int $p_size 受信サイズ（指定があればデフォルトサイズより優先される）
      * @return int 受信したサイズ or false（失敗） or null（取得できるデータがない）
      */
-    public function recv(string $p_cid, &$p_recv, int $p_size = null)
+    public function recv(string $p_cid, &$p_recv, ?int $p_size = null)
     {
         // 受信サイズ決定
         $size = $this->receive_buffer_size;

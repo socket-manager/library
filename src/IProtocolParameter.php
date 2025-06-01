@@ -43,10 +43,10 @@ interface IProtocolParameter
      * ※プロトコルUNITで使用 
      * 
      * @param mixed &$p_recv 受信エリア
-     * @param int $p_size 受信サイズ
+     * @param ?int $p_size 受信サイズ
      * @return int 受信したサイズ
      */
-    public function recv(&$p_recv, int $p_size = null): int;
+    public function recv(&$p_recv, ?int $p_size = null): int;
 
     /**
      * 送信データの設定

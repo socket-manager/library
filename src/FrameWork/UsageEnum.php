@@ -193,6 +193,8 @@ EOD;
                 self::SEPARATOR => self::CONST_SEPARATOR
             };
         }
+
+        return 'Unsupported language';
     }
 
     /**
@@ -219,5 +221,7 @@ EOD;
                 self::MAIN_IDENTIFER => str_replace(':identifer', $p_str, $this->message($p_lang)),
             };
         }
+
+        return 'Unsupported language';
     }
 }

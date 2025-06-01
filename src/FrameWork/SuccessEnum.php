@@ -87,11 +87,11 @@ enum SuccessEnum: string
     /**
      * メッセージの取得
      * 
-     * @param string $p_file ファイル名
+     * @param ?string $p_file ファイル名
      * @param string $p_lang 言語
      * @return string メッセージ
      */
-    public function message(string $p_file = null, string $p_lang = 'ja'): string
+    public function message(?string $p_file = null, string $p_lang = 'ja'): string
     {
         $msg = null;
         if($p_lang === 'ja')
@@ -143,10 +143,10 @@ enum SuccessEnum: string
     /**
      * メッセージ表示
      * 
-     * @param string $p_file ファイル名
+     * @param ?string $p_file ファイル名
      * @param string $p_lang 言語
      */
-    public function display(string $p_file = null, string $p_lang = 'ja')
+    public function display(?string $p_file = null, string $p_lang = 'ja')
     {
         printf("\033[32m[\033[m\033[32msuccess\033[m\033[32m]\033[m %s\n", $this->message($p_file, $p_lang));
     }

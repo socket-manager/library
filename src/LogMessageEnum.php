@@ -125,15 +125,17 @@ enum LogMessageEnum
                 default => 'Enum value that does not exist'
             };
         }
+
+        return 'Unsupported language';
     }
 
     /**
      * ソケット用エラーメッセージの取得
      * 
-     * @param Socket $p_soc ソケットリソース
+     * @param ?Socket $p_soc ソケットリソース
      * @return string エラーメッセージ
      */
-    public function socket(Socket $p_soc = null): string
+    public function socket(?Socket $p_soc = null): string
     {
         $cod = socket_last_error($p_soc);
         return match($this)
@@ -146,10 +148,10 @@ enum LogMessageEnum
     /**
      * ソケット用エラー情報の取得
      * 
-     * @param Socket $p_soc ソケットリソース
+     * @param ?Socket $p_soc ソケットリソース
      * @return array ['code' => <コード>, 'message' => <メッセージ>]
      */
-    public function array(Socket $p_soc = null): array
+    public function array(?Socket $p_soc = null): array
     {
         $cod = socket_last_error($p_soc);
         $message = $this->socket($p_soc);

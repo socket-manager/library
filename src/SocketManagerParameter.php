@@ -56,9 +56,9 @@ class SocketManagerParameter implements IUnitParameter
     /**
      * コンストラクタ
      * 
-     * @param string $p_lang 言語コード
+     * @param ?string $p_lang 言語コード
      */
-    public function __construct(string $p_lang = null)
+    public function __construct(?string $p_lang = null)
     {
         // 言語設定
         if($p_lang !== null)
@@ -149,7 +149,7 @@ class SocketManagerParameter implements IUnitParameter
      * @param mixed 受信データ or null（データなし）
      * @param ?string $p_cid 設定したい接続ID
      */
-    final public function setRecvData($p_dat, string $p_cid = null)
+    final public function setRecvData($p_dat, ?string $p_cid = null)
     {
         $cid = $this->cid;
         if($p_cid !== null)
@@ -184,9 +184,9 @@ class SocketManagerParameter implements IUnitParameter
      * 
      * ― フラグ指定に関わらずシリアライザーが登録されていなければ変換はされない
      * 
-     * @param string $p_cid 設定したい接続ID
+     * @param ?string $p_cid 設定したい接続ID
      */
-    final public function setRecvStack($p_data = null, ?bool $p_convert = null, string $p_cid = null)
+    final public function setRecvStack($p_data = null, ?bool $p_convert = null, ?string $p_cid = null)
     {
         // 対象の接続IDの取得
         $cid = $this->cid;
@@ -231,9 +231,9 @@ class SocketManagerParameter implements IUnitParameter
      * ※基本的に送受信スタック内のペイロードデータはシリアライズ化されている事を前提とする
      * 
      * @param mixed $p_data 設定するデータ
-     * @param string $p_cid 設定したい接続ID
+     * @param ?string $p_cid 設定したい接続ID
      */
-    final public function setSendStack($p_data = null, string $p_cid = null)
+    final public function setSendStack($p_data = null, ?string $p_cid = null)
     {
         $cid = $this->cid;
         if($p_cid !== null)
@@ -540,7 +540,7 @@ class SocketManagerParameter implements IUnitParameter
      * @param ?string $p_cid 接続ID
      * @return mixed バッファデータ or null（空）
      */
-    final public function getTempBuff(array $p_prop, string $p_cid = null)
+    final public function getTempBuff(array $p_prop, ?string $p_cid = null)
     {
         $cid = $this->cid;
         if($p_cid !== null)
@@ -568,7 +568,7 @@ class SocketManagerParameter implements IUnitParameter
      * @param array $p_prop プロパティのリスト
      * @param ?string $p_cid 接続ID
      */
-    final public function setTempBuff(array $p_prop, string $p_cid = null)
+    final public function setTempBuff(array $p_prop, ?string $p_cid = null)
     {
         $cid = $this->cid;
         if($p_cid !== null)

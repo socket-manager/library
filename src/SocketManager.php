@@ -50,6 +50,11 @@ class SocketManager
      */
     private const UDP_CONNECTION_IDENTIFY = '';
 
+    /**
+     * インターバル間隔
+     */
+    private const INTERVAL_SPAN = 1000;
+
 
     //--------------------------------------------------------------------------
     // プロパティ
@@ -256,6 +261,12 @@ class SocketManager
      */
     private int $limit_connection = 10;
 
+    /**
+     * インターバル間隔
+     * 
+     */
+    private int $interval_span = 0;
+
 
     //--------------------------------------------------------------------------
     // メソッド
@@ -432,9 +443,6 @@ class SocketManager
      */
     public function cycleDriven(int $p_cycle_interval = 2000, int $p_alive_interval = 0): bool
     {
-        // 周期インターバル
-        usleep($p_cycle_interval);
-
         // ソケットセレクト
         $w_ret = $this->select();
         if($w_ret === false)
@@ -446,7 +454,15 @@ class SocketManager
         $dess = $this->descriptors;
         unset($dess[$this->await_connection_id]);
 
+        if(count($dess) <= 0)
+        {
+            // 周期インターバル
+            usleep($p_cycle_interval);
+            return true;
+        }
+
         // ディスクリプタでループ
+        $span_count = 0;
         foreach($dess as $cid => $des)
         {
             // SELECTイベントが入ったディスクリプタでループ
@@ -703,6 +719,14 @@ class SocketManager
                 continue;
             }
             $this->setProperties($cid, ['receive_buffer' => null]);
+
+            $this->interval_span++;
+            if($this->interval_span >= self::INTERVAL_SPAN)
+            {
+                // 周期インターバル
+                usleep($p_cycle_interval);
+                $this->interval_span = 0;
+            }
         }
 
         return true;

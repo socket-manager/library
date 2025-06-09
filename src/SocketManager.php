@@ -53,7 +53,7 @@ class SocketManager
     /**
      * インターバル間隔
      */
-    private const INTERVAL_SPAN = 1000;
+    private const INTERVAL_SPAN = 30000000;
 
 
     //--------------------------------------------------------------------------
@@ -262,10 +262,10 @@ class SocketManager
     private int $limit_connection = 10;
 
     /**
-     * インターバル間隔
+     * インターバル間隔計測開始時間
      * 
      */
-    private int $interval_span = 0;
+    private float $prev_microtime = 0;
 
 
     //--------------------------------------------------------------------------
@@ -458,11 +458,11 @@ class SocketManager
         {
             // 周期インターバル
             usleep($p_cycle_interval);
+            $this->prev_microtime = hrtime(true);
             return true;
         }
 
         // ディスクリプタでループ
-        $span_count = 0;
         foreach($dess as $cid => $des)
         {
             // SELECTイベントが入ったディスクリプタでループ
@@ -720,12 +720,12 @@ class SocketManager
             }
             $this->setProperties($cid, ['receive_buffer' => null]);
 
-            $this->interval_span++;
-            if($this->interval_span >= self::INTERVAL_SPAN)
+            $now_microtime = hrtime(true);
+            if(($now_microtime - $this->prev_microtime) >= self::INTERVAL_SPAN)
             {
                 // 周期インターバル
                 usleep($p_cycle_interval);
-                $this->interval_span = 0;
+                $this->prev_microtime = $now_microtime;
             }
         }
 

@@ -35,6 +35,12 @@ class SocketManager
      */
     private const SOCKET_ERROR_PEER_SHUTDOWN = [10053, 10054, 104];
 
+    /**
+     * ソケット受信のリトライが必要
+     * （Resource temporarily unavailable）
+     */
+    private const SOCKET_ERROR_READ_RETRY = 11;
+
 
     //--------------------------------------------------------------------------
     // 定数（その他）
@@ -1779,6 +1785,10 @@ class SocketManager
             if($w_ret === false)
             {
                 $w_ret = LogMessageEnum::SOCKET_ERROR->array($soc);
+                if($w_ret['code'] === self::SOCKET_ERROR_READ_RETRY)
+                {
+                    return null;
+                }
                 $this->logWriter('notice', [__METHOD__ => 'socket_read', "message" => $w_ret['message'], 'connection id' => $p_cid]);
 
                 // ソケット操作を完了できなかった
@@ -1909,6 +1919,10 @@ class SocketManager
             if($w_ret === false)
             {
                 $w_ret = LogMessageEnum::SOCKET_ERROR->array($soc);
+                if($w_ret['code'] === self::SOCKET_ERROR_READ_RETRY)
+                {
+                    return null;
+                }
                 $this->logWriter('notice', [__METHOD__ => $w_ret['message']]);
 
                 // ソケット操作を完了できなかった

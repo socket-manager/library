@@ -1789,34 +1789,32 @@ class SocketManager
                 {
                     return null;
                 }
-                $this->logWriter('notice', [__METHOD__ => 'socket_read', "message" => $w_ret['message'], 'connection id' => $p_cid]);
 
                 // ソケット操作を完了できなかった
                 if($w_ret['code'] === self::SOCKET_ERROR_COULDNT_COMPLETED)
                 {
                     return null;
                 }
-                // 相手からの切断
-                else
+
+                // 相手からの切断を判定
+                $shutdown = false;
+                foreach(self::SOCKET_ERROR_PEER_SHUTDOWN as $cod)
                 {
-                    $shutdown = false;
-                    foreach(self::SOCKET_ERROR_PEER_SHUTDOWN as $cod)
+                    if($w_ret['code'] === $cod)
                     {
-                        if($w_ret['code'] === $cod)
-                        {
-                            $shutdown = true;
-                        }
-                    }
-                    if($shutdown === true)
-                    {
-                        // 緊急停止時コールバックを実行
-                        $callback = $this->emergency_callback;
-                        if($callback !== null)
-                        {
-                            $callback($this->unit_parameter);
-                        }
+                        $shutdown = true;
                     }
                 }
+                if($shutdown === true)
+                {
+                    // 緊急停止時コールバックを実行
+                    $callback = $this->emergency_callback;
+                    if($callback !== null)
+                    {
+                        $callback($this->unit_parameter);
+                    }
+                }
+                $this->logWriter('notice', [__METHOD__ => 'socket_read', "message" => $w_ret['message'], 'connection id' => $p_cid]);
                 return false;
             }
             $rcv = $w_ret;
@@ -1923,34 +1921,32 @@ class SocketManager
                 {
                     return null;
                 }
-                $this->logWriter('notice', [__METHOD__ => $w_ret['message']]);
 
                 // ソケット操作を完了できなかった
                 if($w_ret['code'] === self::SOCKET_ERROR_COULDNT_COMPLETED)
                 {
                     return null;
                 }
-                // 相手からの切断
-                else
+
+                // 相手からの切断を判定
+                $shutdown = false;
+                foreach(self::SOCKET_ERROR_PEER_SHUTDOWN as $cod)
                 {
-                    $shutdown = false;
-                    foreach(self::SOCKET_ERROR_PEER_SHUTDOWN as $cod)
+                    if($w_ret['code'] === $cod)
                     {
-                        if($w_ret['code'] === $cod)
-                        {
-                            $shutdown = true;
-                        }
-                    }
-                    if($shutdown === true)
-                    {
-                        // 緊急停止時コールバックを実行
-                        $callback = $this->emergency_callback;
-                        if($callback !== null)
-                        {
-                            $callback($this->unit_parameter);
-                        }
+                        $shutdown = true;
                     }
                 }
+                if($shutdown === true)
+                {
+                    // 緊急停止時コールバックを実行
+                    $callback = $this->emergency_callback;
+                    if($callback !== null)
+                    {
+                        $callback($this->unit_parameter);
+                    }
+                }
+                $this->logWriter('notice', [__METHOD__ => $w_ret['message']]);
                 return false;
             }
 
@@ -2041,11 +2037,11 @@ class SocketManager
             if($w_ret === false)
             {
                 $w_ret = LogMessageEnum::SOCKET_ERROR->array($soc);
-                $this->logWriter('error', [__METHOD__ => 'socket_sendto', "message" => $w_ret['message'], 'connection id' => $p_cid]);
                 if($w_ret['code'] === self::SOCKET_ERROR_COULDNT_COMPLETED)
                 {
                     return null;
                 }
+                $this->logWriter('error', [__METHOD__ => 'socket_sendto', "message" => $w_ret['message'], 'connection id' => $p_cid]);
                 return false;
             }
         }
@@ -2056,11 +2052,15 @@ class SocketManager
             if($w_ret === false)
             {
                 $w_ret = LogMessageEnum::SOCKET_ERROR->array($soc);
-                $this->logWriter('notice', [__METHOD__ => 'socket_write', "message" => $w_ret['message'], 'connection id' => $p_cid]);
+                if($w_ret['code'] === self::SOCKET_ERROR_READ_RETRY)
+                {
+                    return null;
+                }
                 if($w_ret['code'] === self::SOCKET_ERROR_COULDNT_COMPLETED)
                 {
                     return null;
                 }
+                $this->logWriter('notice', [__METHOD__ => 'socket_write', "message" => $w_ret['message'], 'connection id' => $p_cid]);
                 return false;
             }
         }

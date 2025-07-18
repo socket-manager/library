@@ -25,7 +25,7 @@ class UnitException extends Exception
     //--------------------------------------------------------------------------
 
     // UNITパラメータ
-    private SocketManagerParameter $param;
+    private IUnitParameter $param;
 
 
     //--------------------------------------------------------------------------
@@ -37,9 +37,9 @@ class UnitException extends Exception
      * 
      * @param string $p_msg メッセージ
      * @param int $p_cod コード
-     * @param SocketManagerParameter $p_param UNITパラメータ
+     * @param IUnitParameter $p_param UNITパラメータ
      */
-    public function __construct(string $p_msg = '', int $p_cod = 0, SocketManagerParameter $p_param)
+    public function __construct(string $p_msg = '', int $p_cod = 0, IUnitParameter $p_param)
     {
         parent::__construct($p_msg, $p_cod);
         $this->param = $p_param;
@@ -66,10 +66,8 @@ class UnitException extends Exception
         [
             'cod' => $this->getCode(),
             'msg' => $this->getMessage(),
-            'knd' => $this->param->getKindString(),
             'que' => $this->param->getQueueName(),
             'sta' => $this->param->getStatusName(),
-            'cid' => $this->param->getConnectionId(),
             'trace' => $this->getTraceAsString()
         ];
 

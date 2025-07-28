@@ -60,6 +60,21 @@ enum SuccessEnum: string
     case COMMAND_STATUS_ENUM = CraftEnum::COMMAND->value.'_status_enum';
 
     /**
+     * @var string ランタイムUNITクラス生成
+     */
+    case UNITS = RuntimeEnum::UNITS->value;
+
+    /**
+     * @var string ランタイムUNITのキュー名Enum生成
+     */
+    case UNITS_QUEUE_ENUM = RuntimeEnum::UNITS->value.'_queue_enum';
+
+    /**
+     * @var string ランタイムUNITのステータス名Enum生成
+     */
+    case UNITS_STATUS_ENUM = RuntimeEnum::UNITS->value.'_status_enum';
+
+    /**
      * @var string メイン処理クラス生成
      */
     case MAIN = CraftEnum::MAIN->value;
@@ -106,6 +121,9 @@ enum SuccessEnum: string
                 self::COMMAND => 'コマンドUNITクラスの生成に成功しました',
                 self::COMMAND_QUEUE_ENUM => 'コマンドUNITのキュー名Enumの生成に成功しました',
                 self::COMMAND_STATUS_ENUM => 'コマンドUNITのステータス名Enumの生成に成功しました',
+                self::UNITS => 'ランタイムUNITクラスの生成に成功しました',
+                self::UNITS_QUEUE_ENUM => 'ランタイムUNITのキュー名Enumの生成に成功しました',
+                self::UNITS_STATUS_ENUM => 'ランタイムUNITのステータス名Enumの生成に成功しました',
                 self::MAIN => 'メイン処理クラスの生成に成功しました',
                 self::SETTING => '設定ファイルの生成に成功しました',
                 self::LOCALE => 'メッセージファイルの生成に成功しました',
@@ -125,6 +143,9 @@ enum SuccessEnum: string
                 self::COMMAND => 'Successfully generated command UNIT class',
                 self::COMMAND_QUEUE_ENUM => 'Successfully generated queue name Enum for command UNIT',
                 self::COMMAND_STATUS_ENUM => 'Successfully generated status name Enum for command UNIT',
+                self::UNITS => 'Successfully generated runtime UNIT class',
+                self::UNITS_QUEUE_ENUM => 'Successfully generated queue name Enum for runtime UNIT',
+                self::UNITS_STATUS_ENUM => 'Successfully generated status name Enum for runtime UNIT',
                 self::MAIN => 'Successfully generated main processing class',
                 self::SETTING => 'Successfully generated configuration file',
                 self::LOCALE => 'Successfully generated message file',

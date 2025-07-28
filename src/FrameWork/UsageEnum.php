@@ -69,6 +69,30 @@ EOD;
 EOD;
 
     /**
+     * @var string runtimeコマンド共通定義（日本語）
+     */
+    private const CONST_JA_RUNTIME_FOR_LARAVEL =
+<<<EOD
+ \033[33mruntime\033[m
+  \033[32mruntime:init\033[m <初期化クラス名>                   初期化クラスの生成
+  \033[32mruntime:parameter\033[m <UNITパラメータクラス名>      UNITパラメータクラスの生成
+  \033[32mruntime:units\033[m <ランタイムUNIT定義のクラス名>    ランタイムUNIT定義のクラスとキュー／ステータス名Enumの生成
+  \033[32mruntime:main\033[m <メイン処理のクラス名>             メイン処理クラスの生成
+EOD;
+
+    /**
+     * @var string runtimeコマンド共通定義（英語）
+     */
+    private const CONST_EN_RUNTIME_FOR_LARAVEL =
+<<<EOD
+ \033[33mruntime\033[m
+  \033[32mruntime:init\033[m <initialization class name>                Generating initialization class
+  \033[32mruntime:parameter\033[m <UNIT parameter class name>           Generate UNIT parameter class
+  \033[32mruntime:units\033[m <Class name of UNIT's definition>         Generate class and status name Enum for protocol UNIT definition
+  \033[32mruntime:main\033[m <Main processing class name>               Generating main processing class
+EOD;
+
+    /**
      * @var string craftコマンドオリジナル定義（日本語）
      */
     private const CONST_JA_CRAFT_NOT_LARAVEL =
@@ -130,6 +154,11 @@ EOD;
     case CRAFT = 50;
 
     /**
+     * @var int runtimeコマンド
+     */
+    case RUNTIME = 55;
+
+    /**
      * @var int Laravelコマンド
      */
     case LARAVEL = 60;
@@ -168,6 +197,7 @@ EOD;
                 self::MAIN_IDENTIFER => "  \033[32m:identifer\033[m",
                 self::MAIN_EMPTY => "  \033[34mEmpty...\033[m\n",
                 self::CRAFT => $craft,
+                self::RUNTIME => self::CONST_JA_RUNTIME_FOR_LARAVEL."\n",
                 self::LARAVEL => $laravel,
                 self::SEPARATOR => self::CONST_SEPARATOR
             };
@@ -189,6 +219,7 @@ EOD;
                 self::MAIN_IDENTIFER => "  \033[32m:identifer\033[m",
                 self::MAIN_EMPTY => "  \033[34mEmpty...\033[m\n",
                 self::CRAFT => $craft,
+                self::RUNTIME => self::CONST_EN_RUNTIME_FOR_LARAVEL."\n",
                 self::LARAVEL => $laravel,
                 self::SEPARATOR => self::CONST_SEPARATOR
             };

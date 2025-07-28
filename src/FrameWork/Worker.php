@@ -57,6 +57,11 @@ class Worker
     private CraftEnum $craft_enum;
 
     /**
+     * @var RuntimeEnum $runtime_enum RuntimeEnumのキャスト用
+     */
+    private RuntimeEnum $runtime_enum;
+
+    /**
      * @var LaravelEnum $laravel_enum LaravelEnumのキャスト用
      */
     private LaravelEnum $laravel_enum;
@@ -143,6 +148,7 @@ class Worker
             if($this->is_laravel === true)
             {
                 $usage .= UsageEnum::CRAFT->message($this->is_laravel, $this->lang);
+                $usage .= UsageEnum::RUNTIME->message($this->is_laravel, $this->lang);
                 $usage .= UsageEnum::LARAVEL->message($this->is_laravel, $this->lang);
                 $usage .= UsageEnum::SEPARATOR->message($this->is_laravel, $this->lang);
                 printf($usage);
@@ -183,6 +189,7 @@ class Worker
 
             // Usage表示
             $usage .= UsageEnum::CRAFT->message($this->is_laravel, $this->lang);
+            $usage .= UsageEnum::RUNTIME->message($this->is_laravel, $this->lang);
             $usage .= UsageEnum::LARAVEL->message($this->is_laravel, $this->lang);
             printf($usage);
             return false;
@@ -235,6 +242,10 @@ class Worker
             // クラフトの実行
             case CommandEnum::CRAFT->value:
                 $w_ret = $this->craftExecution($parts[1]);
+                break;
+            // ランタイムコマンドの実行
+            case CommandEnum::RUNTIME->value:
+                $w_ret = $this->runtimeExecution($parts[1]);
                 break;
             // Laravel操作の実行
             case CommandEnum::LARAVEL->value:
@@ -461,6 +472,176 @@ laravel_check:
 
             // ファイル作成
             $class = $this->craft_enum->enumStatus();
+            $file_data = file_get_contents($template_path.$class.'.php');
+            $file_data = str_replace($class, $this->params[2].'StatusEnum', $file_data);
+            file_put_contents($create_file, $file_data);
+
+            // 成功メッセージ
+            $success_enum = null;
+            $typs = SuccessEnum::cases();
+            foreach($typs as $typ)
+            {
+                if($typ->value === $this->success_enum->value.'_status_enum')
+                {
+                    $success_enum = $typ;
+                    break;
+                }
+            }
+            $this->success_sub_enum = $success_enum;
+            $this->success_sub_enum->display($this->params[2].'StatusEnum');
+        }
+        return true;
+    }
+
+    /**
+     * ランタイムコマンドの実行
+     * 
+     * @param string $p_typ ランタイムタイプ
+     * @param string $p_sep ディレクトリセパレータ
+     * @return bool true（成功） or false（失敗）
+     */
+    private function runtimeExecution(string $p_typ, string $p_sep = DIRECTORY_SEPARATOR)
+    {
+        // クラス名引数の存在チェック
+        if(count($this->params) < 3)
+        {
+            FailureEnum::NO_CLASS_NAME->display(null, $this->lang);
+            return false;
+        }
+
+        // 一致するEnum値を取得
+        $runtime_enum = null;
+        $typs = RuntimeEnum::cases();
+        foreach($typs as $typ)
+        {
+            if($typ->value === $p_typ)
+            {
+                $runtime_enum = $typ;
+                break;
+            }
+        }
+        if($runtime_enum === null)
+        {
+            FailureEnum::COMMAND_FAIL->display(null, $this->lang);
+            return false;
+        }
+        $this->runtime_enum = $runtime_enum;
+
+        // パスの生成
+        $dir = $this->runtime_enum->directory();
+        $full_path = $this->path.$p_sep.'app'.$p_sep.$dir;
+
+        // ファイル存在チェック
+        $create_file = $full_path.$p_sep.$this->params[2].'.php';
+        if(file_exists($create_file))
+        {
+            FailureEnum::EXISTING_CLASS->display($this->params[2], $this->lang);
+            return false;
+        }
+
+        // ディレクトリ生成
+        if(is_dir($full_path) === false)
+        {
+            mkdir($full_path);
+        }
+
+        // テンプレートのパスを取得
+        $class = $this->runtime_enum->class();
+        $template_path = $this->path.$p_sep.'vendor'.$p_sep.'socket-manager'.$p_sep.'library'.$p_sep.'src'.$p_sep.'FrameWork'.$p_sep.'Template'.$p_sep.$dir.$p_sep;
+
+        // ファイル作成
+        $file_data = file_get_contents($template_path.$class.'.php');
+        $file_data = str_replace($class, $this->params[2], $file_data);
+        if($this->runtime_enum->name === 'MAIN')
+        {
+            // 識別子の変換
+            $app_name = strtolower($this->params[2][0]);
+            $cnt = strlen($this->params[2]);
+            for($i = 1; $i < $cnt; $i++)
+            {
+                if(ctype_upper($this->params[2][$i]))
+                {
+                    $app_name .= '-'.strtolower($this->params[2][$i]);
+                }
+                else
+                {
+                    $app_name .= $this->params[2][$i];
+                }
+            }
+            $file_data = str_replace('template-application', $app_name, $file_data);
+        }
+        else
+        if($this->runtime_enum->name === 'UNITS')
+        {
+            // ステータス用のEnum名を変換
+            $class = $this->runtime_enum->enumStatus();
+            $file_data = str_replace($class, $this->params[2].'StatusEnum', $file_data);
+
+            // キュー用のEnum名を変換
+            $class = $this->runtime_enum->enumQueue();
+            $file_data = str_replace($class, $this->params[2].'QueueEnum', $file_data);
+        }
+        file_put_contents($create_file, $file_data);
+
+        // 成功メッセージ
+        $success_enum = null;
+        $typs = SuccessEnum::cases();
+        foreach($typs as $typ)
+        {
+            if($typ->value === $this->runtime_enum->value)
+            {
+                $success_enum = $typ;
+                break;
+            }
+        }
+        $this->success_enum = $success_enum;
+        $this->success_enum->display($this->params[2], $this->lang);
+
+        // Enumファイル作成（キュー名）
+        if($this->runtime_enum->name === 'UNITS')
+        {
+            // ファイル存在チェック
+            $create_file = $full_path.$p_sep.$this->params[2].'QueueEnum.php';
+            if(file_exists($create_file))
+            {
+                FailureEnum::EXISTING_ENUM->display($this->params[2].'QueueEnum', $this->lang);
+                return false;
+            }
+
+            // ファイル作成
+            $class = $this->runtime_enum->enumQueue();
+            $file_data = file_get_contents($template_path.$class.'.php');
+            $file_data = str_replace($class, $this->params[2].'QueueEnum', $file_data);
+            file_put_contents($create_file, $file_data);
+
+            // 成功メッセージ
+            $success_enum = null;
+            $typs = SuccessEnum::cases();
+            foreach($typs as $typ)
+            {
+                if($typ->value === $this->success_enum->value.'_queue_enum')
+                {
+                    $success_enum = $typ;
+                    break;
+                }
+            }
+            $this->success_sub_enum = $success_enum;
+            $this->success_sub_enum->display($this->params[2].'QueueEnum');
+        }
+
+        // Enumファイル作成（ステータス名）
+        if($this->runtime_enum->name === 'UNITS')
+        {
+            // ファイル存在チェック
+            $create_file = $full_path.$p_sep.$this->params[2].'StatusEnum.php';
+            if(file_exists($create_file))
+            {
+                FailureEnum::EXISTING_ENUM->display($this->params[2].'StatusEnum', $this->lang);
+                return false;
+            }
+
+            // ファイル作成
+            $class = $this->runtime_enum->enumStatus();
             $file_data = file_get_contents($template_path.$class.'.php');
             $file_data = str_replace($class, $this->params[2].'StatusEnum', $file_data);
             file_put_contents($create_file, $file_data);

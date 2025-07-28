@@ -25,6 +25,11 @@ enum CommandEnum: string
     case CRAFT = 'craft';
 
     /**
+     * @var 生成アウトプット（ランタイム用）
+     */
+    case RUNTIME = 'runtime';
+
+    /**
      * @var Laravel操作
      */
     case LARAVEL = 'laravel';
@@ -44,6 +49,7 @@ enum CommandEnum: string
         return match($this)
         {
             self::CRAFT => self::CRAFT->value,
+            self::RUNTIME => self::RUNTIME->value,
             self::LARAVEL => self::LARAVEL->value
         };
     }

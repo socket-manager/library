@@ -42,9 +42,9 @@ class InitForRuntimeTemplate implements IInitRuntimeManager
     /**
      * 緊急停止時のコールバックの取得
      * 
-     * 例外等の緊急切断時に実行される。nullを返す場合は無効化となる。
+     * 例外等の緊急停止時に実行される。nullを返す場合は無効化となる。
      * 
-     * @return mixed "function(SocketManagerParameter $p_param)"
+     * @return mixed "function(RuntimeManagerParameter $p_param)"
      */
     public function getEmergencyCallback()
     {

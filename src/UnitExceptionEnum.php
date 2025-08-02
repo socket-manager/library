@@ -120,6 +120,11 @@ enum UnitExceptionEnum: int
     case ECODE_EMERGENCY_SHUTDOWN = 9000;
 
     /**
+     * @var int アプリ終了
+     */
+    case ECODE_FINISH_SHUTDOWN = 9100;
+
+    /**
      * @var int スローブレイク時に発行する例外コード
      */
     case ECODE_THROW_BREAK = 9999;
@@ -182,6 +187,7 @@ enum UnitExceptionEnum: int
                 self::ECODE_FORCE_CLOSE => 'クライアント強制要求による切断',
                 self::ECODE_ALIVE_CHECK_FAIL => 'アライブチェックの実行失敗',
                 self::ECODE_EMERGENCY_SHUTDOWN => '緊急停止',
+                self::ECODE_FINISH_SHUTDOWN => 'アプリ終了',
                 self::ECODE_THROW_BREAK => 'スローブレイク発生',
                 default => '存在しないEnum値です'
             };
@@ -213,6 +219,7 @@ enum UnitExceptionEnum: int
                 self::ECODE_FORCE_CLOSE => 'Disconnection due to client forced request',
                 self::ECODE_ALIVE_CHECK_FAIL => 'Alive check execution failure',
                 self::ECODE_EMERGENCY_SHUTDOWN => 'emergency stop',
+                self::ECODE_FINISH_SHUTDOWN => 'application stop',
                 self::ECODE_THROW_BREAK => 'Throw break occurs',
                 default => 'Enum value that does not exist'
             };

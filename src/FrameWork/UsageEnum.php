@@ -206,7 +206,7 @@ EOD;
         if($p_lang === 'en')
         {
             $craft = self::CONST_EN_CRAFT_FOR_LARAVEL."\n";
-            $laravel = self::CONST_JA_LARAVEL_FOR_LARAVEL."\n";
+            $laravel = self::CONST_EN_LARAVEL_FOR_LARAVEL."\n";
             if($p_is_laravel === false)
             {
                 $craft .= self::CONST_EN_CRAFT_NOT_LARAVEL."\n";

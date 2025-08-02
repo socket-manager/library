@@ -52,7 +52,7 @@ class RuntimeManager
     /**
      * 緊急停止時のコールバック
      * 
-     * 例外等の緊急切断時に実行される
+     * 例外等の緊急停止時に実行される
      */
     private $emergency_callback = null;
 
@@ -174,7 +174,7 @@ class RuntimeManager
      * 周期ドリブン処理の実行
      * 
      * @param int $p_cycle_interval 周期インターバルタイム（マイクロ秒）
-     * @return bool true（成功） or false（失敗）
+     * @return bool true（成功） or false（失敗、または停止）
      */
     public function cycleDriven(int $p_cycle_interval = 2000): bool
     {
@@ -194,14 +194,20 @@ class RuntimeManager
             $w_ret = get_class($e);
             if($w_ret === self::E_CLASS_NAME_FOR_UNIT)
             {
-                if($e->getCode() !== UnitExceptionEnum::ECODE_THROW_BREAK->value)
+                if($e->getCode() === UnitExceptionEnum::ECODE_THROW_BREAK->value)
                 {
-                    $this->logWriter('error', $e->getArrayMessage());
+                    $this->logWriter('notice', $e->getArrayMessage());
+                }
+                else
+                if($e->getCode() === UnitExceptionEnum::ECODE_FINISH_SHUTDOWN->value)
+                {
+                    $this->logWriter('info', $e->getArrayMessage());
                     return false;
                 }
                 else
                 {
-                    $this->logWriter('info', $e->getArrayMessage());
+                    $this->logWriter('error', $e->getArrayMessage());
+                    return false;
                 }
             }
             else

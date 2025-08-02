@@ -115,16 +115,25 @@ class RuntimeManagerParameter implements IUnitParameter
     }
 
     /**
-     * 緊急停止（即時切断）
+     * アプリ終了
+     */
+    final public function finishShutdown()
+    {
+        // 例外発行
+        throw new UnitException(
+            UnitExceptionEnum::ECODE_FINISH_SHUTDOWN->message($this->lang),
+            UnitExceptionEnum::ECODE_FINISH_SHUTDOWN->value,
+            $this
+        );
+    }
+
+    /**
+     * 緊急（即時）停止
      */
     final public function emergencyShutdown()
     {
         // 例外発行
-        throw new UnitException(
-            UnitExceptionEnum::ECODE_EMERGENCY_SHUTDOWN->message($this->lang),
-            UnitExceptionEnum::ECODE_EMERGENCY_SHUTDOWN->value,
-            $this
-        );
+        throw new \Exception(UnitExceptionEnum::ECODE_EMERGENCY_SHUTDOWN->message(), UnitExceptionEnum::ECODE_EMERGENCY_SHUTDOWN->value);
     }
 
 

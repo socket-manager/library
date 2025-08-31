@@ -25,6 +25,15 @@ enum LaravelEnum: string
     case COMMAND = 'command';
 
 
+    /**
+     * 出力先ディレクトリの階層定義
+     */
+    const DST_DIRECTORIES =
+    [
+        'Console',
+        'Commands'
+    ];
+
     //--------------------------------------------------------------------------
     // メソッド
     //--------------------------------------------------------------------------
@@ -58,13 +67,13 @@ enum LaravelEnum: string
     /**
      * ディレクトリ名の取得（出力先）
      * 
-     * @return string ディレクトリ名
+     * @return array ディレクトリ名の階層リスト
      */
-    public function dstDirectory(): string
+    public function dstDirectory(): array
     {
         return match($this)
         {
-            self::COMMAND => 'Console'.DIRECTORY_SEPARATOR.'Commands'
+            self::COMMAND => self::DST_DIRECTORIES
         };
     }
 }

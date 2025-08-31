@@ -708,9 +708,20 @@ laravel_check:
             $this->craftExecution('main');
         }
 
-        // 出力先ディレクトリのフルパス
-        $dir = $this->laravel_enum->dstDirectory();
-        $dst_path = $this->path.$p_sep.'app'.$p_sep.$dir;
+        // 出力先ディレクトリの作成
+        $dirs = $this->laravel_enum->dstDirectory();
+        $dst_path = $this->path.$p_sep.'app';
+        foreach($dirs as $dir)
+        {
+            // 階層ごとのパス
+            $dst_path = $dst_path.$p_sep.$dir;
+
+            // ディレクトリ作成
+            if(is_dir($dst_path) === false)
+            {
+                mkdir($dst_path);
+            }
+        }
 
         // 出力先クラスの存在チェック
         $dst_file = $dst_path.$p_sep.$this->params[2].'.php';
@@ -718,12 +729,6 @@ laravel_check:
         {
             FailureEnum::EXISTING_CLASS->display($this->params[2], $this->lang);
             return false;
-        }
-
-        // ディレクトリ作成
-        if(is_dir($dst_path) === false)
-        {
-            mkdir($dst_path);
         }
 
         // ファイル作成

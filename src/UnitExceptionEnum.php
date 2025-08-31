@@ -153,9 +153,9 @@ enum UnitExceptionEnum: int
      * 例外メッセージの取得
      * 
      * @param string $p_lang 言語
-     * @return string 例外メッセージ
+     * @return ?string 例外メッセージ
      */
-    public function message(string $p_lang = 'ja'): string
+    public function message(string $p_lang = 'ja'): ?string
     {
         if($p_lang !== 'ja' && $p_lang !== 'en')
         {

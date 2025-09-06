@@ -48,6 +48,12 @@ class SocketManagerParameter implements IUnitParameter
      */
     private ?ProtocolParameter $protocol = null;
 
+    /**
+     * シンプルソケットインスタンス
+     * 
+     */
+    public ?ISimpleSocketUdp $simple_socket = null;
+
 
     //--------------------------------------------------------------------------
     // メソッド
@@ -801,6 +807,18 @@ class SocketManagerParameter implements IUnitParameter
     {
         $this->cid = $p_cid;
         return;
+    }
+
+    /**
+     * 全接続IDを取得
+     * 
+     * @param ?string $p_cid 除外する接続ID
+     * @return array 接続IDのリスト
+     */
+    final public function getConnectionIdAll(?string $p_cid = null): array
+    {
+        $w_ret = $this->manager->getConnectionIdAll($p_cid);
+        return $w_ret;
     }
 
     /**

@@ -77,6 +77,36 @@ enum LogMessageEnum
      */
     case NONBLOCK_SETTING_FAIL;
 
+    /**
+     * @var 接続制限数に到達
+     */
+    case CONNECTION_LIMIT_REACHED;
+
+    /**
+     * @var UDP通信用
+     */
+    case FOR_UDP;
+
+    /**
+     * @var 受信サイズが不一致
+     */
+    case RECEIVED_SIZE_MISMATCH;
+
+    /**
+     * @var 送信バッファが一杯
+     */
+    case SEND_BUFFER_FULL;
+
+    /**
+     * @var 受信バッファが一杯
+     */
+    case RECEIVE_BUFFER_FULL;
+
+    /**
+     * @var ダウンタイム中の受信
+     */
+    case RECEIVING_DURING_DOWNTIME;
+
 
     //--------------------------------------------------------------------------
     // メソッド
@@ -104,6 +134,12 @@ enum LogMessageEnum
                 self::SEND_DATA_NO_SETTING => '送信データが未設定',
                 self::UNIT_NO_SETTING => '処理対象のUNITが未登録',
                 self::NONBLOCK_SETTING_FAIL => 'ノンブロック設定失敗',
+                self::CONNECTION_LIMIT_REACHED => '接続制限数に到達',
+                self::FOR_UDP => 'UDP通信用',
+                self::RECEIVED_SIZE_MISMATCH => '受信サイズが不一致',
+                self::SEND_BUFFER_FULL => '送信バッファが一杯',
+                self::RECEIVE_BUFFER_FULL => '受信バッファが一杯',
+                self::RECEIVING_DURING_DOWNTIME => 'ダウンタイム中の受信',
                 default => '存在しないEnum値です'
             };
         }
@@ -122,6 +158,12 @@ enum LogMessageEnum
                 self::SEND_DATA_NO_SETTING => 'Transmission data not set',
                 self::UNIT_NO_SETTING => 'UNIT to be processed is not registered',
                 self::NONBLOCK_SETTING_FAIL => 'Non-blocking setting failed',
+                self::CONNECTION_LIMIT_REACHED => 'Connection limit reached',
+                self::FOR_UDP => 'This process is for UDP',
+                self::RECEIVED_SIZE_MISMATCH => 'Received size mismatch',
+                self::SEND_BUFFER_FULL => 'Send buffer full',
+                self::RECEIVE_BUFFER_FULL => 'Receive buffer is full',
+                self::RECEIVING_DURING_DOWNTIME => 'Receiving during downtime',
                 default => 'Enum value that does not exist'
             };
         }

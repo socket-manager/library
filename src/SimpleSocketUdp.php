@@ -643,7 +643,7 @@ final class SimpleSocketUdp implements ISimpleSocketUdp
         $now_downtime = hrtime(true) / 1000000;
         if(($now_downtime - $prv_downtime) < $this->downtime)
         {
-            $this->logWriter('notice', [__METHOD__ => LogMessageEnum::RECEIVING_DURING_DOWNTIME->message($this->lang)]);
+            $this->logWriter('debug', [__METHOD__ => LogMessageEnum::RECEIVING_DURING_DOWNTIME->message($this->lang)]);
             return true;
         }
 

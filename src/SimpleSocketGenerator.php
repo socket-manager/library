@@ -216,5 +216,24 @@ final class SimpleSocketGenerator
 
         return $ret;
     }
+
+    /**
+     * ソケット全クローズ
+     * 
+     * @return bool true（成功） or false（失敗）
+     */
+    public function shutdownAll(): bool
+    {
+        $ret = true;
+        if($this->type === SimpleSocketTypeEnum::UDP)
+        {
+            if($this->udp !== null)
+            {
+                $ret = $this->udp->shutdownAll();
+            }
+        }
+
+        return $ret;
+    }
 }
 

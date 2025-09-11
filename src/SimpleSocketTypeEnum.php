@@ -15,7 +15,17 @@ namespace SocketManager\Library;
 enum SimpleSocketTypeEnum: string
 {
     /**
-     * @var UDP通信タイプ
+     * @var string TCP Server タイプ
+     */
+    case TCP_SERVER = 'tcp_server';
+
+    /**
+     * @var string TCP Client タイプ
+     */
+    case TCP_CLIENT = 'tcp_client';
+
+    /**
+     * @var string UDP通信タイプ
      */
     case UDP = 'udp';
 
@@ -28,6 +38,8 @@ enum SimpleSocketTypeEnum: string
     {
         return match($this)
         {
+            self::TCP_SERVER => true,
+            self::TCP_CLIENT => false,
             default => null
         };
     }
@@ -41,6 +53,8 @@ enum SimpleSocketTypeEnum: string
     {
         return match($this)
         {
+            self::TCP_SERVER => false,
+            self::TCP_CLIENT => false,
             self::UDP => true,
             default => null
         };

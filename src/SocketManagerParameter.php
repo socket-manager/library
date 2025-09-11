@@ -52,7 +52,7 @@ class SocketManagerParameter implements IUnitParameter
      * シンプルソケットインスタンス
      * 
      */
-    public ?ISimpleSocketUdp $simple_socket = null;
+    public ISimpleSocketUdp|ISimpleSocketTcpServer|ISimpleSocketTcpClient|null $simple_socket = null;
 
 
     //--------------------------------------------------------------------------

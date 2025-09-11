@@ -88,6 +88,11 @@ enum LogMessageEnum
     case FOR_UDP;
 
     /**
+     * @var TCP通信用
+     */
+    case FOR_TCP;
+
+    /**
      * @var 受信サイズが不一致
      */
     case RECEIVED_SIZE_MISMATCH;
@@ -136,6 +141,7 @@ enum LogMessageEnum
                 self::NONBLOCK_SETTING_FAIL => 'ノンブロック設定失敗',
                 self::CONNECTION_LIMIT_REACHED => '接続制限数に到達',
                 self::FOR_UDP => 'UDP通信用',
+                self::FOR_TCP => 'TCP通信用',
                 self::RECEIVED_SIZE_MISMATCH => '受信サイズが不一致',
                 self::SEND_BUFFER_FULL => '送信バッファが一杯',
                 self::RECEIVE_BUFFER_FULL => '受信バッファが一杯',
@@ -160,6 +166,7 @@ enum LogMessageEnum
                 self::NONBLOCK_SETTING_FAIL => 'Non-blocking setting failed',
                 self::CONNECTION_LIMIT_REACHED => 'Connection limit reached',
                 self::FOR_UDP => 'This process is for UDP',
+                self::FOR_TCP => 'This process is for TCP',
                 self::RECEIVED_SIZE_MISMATCH => 'Received size mismatch',
                 self::SEND_BUFFER_FULL => 'Send buffer full',
                 self::RECEIVE_BUFFER_FULL => 'Receive buffer is full',

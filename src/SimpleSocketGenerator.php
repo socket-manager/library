@@ -7,6 +7,8 @@
 
 namespace SocketManager\Library;
 
+use Exception;
+
 
 /**
  * シンプルソケット生成クラス
@@ -31,6 +33,10 @@ final class SimpleSocketGenerator
 
     private ?SimpleSocketUdp $udp = null;
     private ?ISimpleSocketUdp $i_udp = null;
+    private ?SimpleSocketTcpServer $tcp_server = null;
+    private ?ISimpleSocketTcpServer $i_tcp_server = null;
+    private ?SimpleSocketTcpClient $tcp_client = null;
+    private ?ISimpleSocketTcpClient $i_tcp_client = null;
 
     private SimpleSocketTypeEnum $type;
     private ?string $host;
@@ -39,6 +45,8 @@ final class SimpleSocketGenerator
     private ?int $size;
     private ?int $limit;
     private ?int $buff_cnt;
+    private ?int $retry;
+    private ?int $retry_interval;
 
     private ?SocketManagerParameter $unit_parameter = null;
     private ?array $argv = null;
@@ -71,6 +79,8 @@ final class SimpleSocketGenerator
      * @param ?int $p_size 送受信バッファサイズ
      * @param ?int ?$p_limit 接続制限数
      * @param ?int $p_buff_cnt バッファスタック件数
+     * @param ?int $p_retry リトライ回数
+     * @param ?int $p_retry_interval リトライ時インターバル（μs）
      */
     public function __construct
     (
@@ -80,7 +90,9 @@ final class SimpleSocketGenerator
         ?int $p_downtime = null,
         ?int $p_size = null,
         ?int $p_limit = null,
-        ?int $p_buff_cnt = null
+        ?int $p_buff_cnt = null,
+        ?int $p_retry = null,
+        ?int $p_retry_interval = null
     )
     {
         $this->type = $p_type;
@@ -90,6 +102,8 @@ final class SimpleSocketGenerator
         $this->size = $p_size;
         $this->limit = $p_limit;
         $this->buff_cnt = $p_buff_cnt;
+        $this->retry = $p_retry;
+        $this->retry_interval = $p_retry_interval;
 
         // 言語設定
         $lang = config('app.locale', 'en');
@@ -117,6 +131,22 @@ final class SimpleSocketGenerator
                 $this->udp->setLogWriter($this->log_writer);
             }
         }
+        else
+        if($this->type === SimpleSocketTypeEnum::TCP_SERVER)
+        {
+            if($this->tcp_server !== null)
+            {
+                $this->tcp_server->setLogWriter($this->log_writer);
+            }
+        }
+        else
+        if($this->type === SimpleSocketTypeEnum::TCP_CLIENT)
+        {
+            if($this->tcp_client !== null)
+            {
+                $this->tcp_client->setLogWriter($this->log_writer);
+            }
+        }
     }
 
     /**
@@ -136,6 +166,22 @@ final class SimpleSocketGenerator
             if($this->udp !== null)
             {
                 $this->udp->setKeepRunning($this->keep_running, ...$p_argv);
+            }
+        }
+        else
+        if($this->type === SimpleSocketTypeEnum::TCP_SERVER)
+        {
+            if($this->tcp_server !== null)
+            {
+                $this->tcp_server->setKeepRunning($this->keep_running, ...$p_argv);
+            }
+        }
+        else
+        if($this->type === SimpleSocketTypeEnum::TCP_CLIENT)
+        {
+            if($this->tcp_client !== null)
+            {
+                $this->tcp_client->setKeepRunning($this->keep_running, ...$p_argv);
             }
         }
     }
@@ -158,14 +204,30 @@ final class SimpleSocketGenerator
                 $p_param->simple_socket = $this->udp;
             }
         }
+        else
+        if($this->type === SimpleSocketTypeEnum::TCP_SERVER)
+        {
+            if($this->tcp_server !== null)
+            {
+                $p_param->simple_socket = $this->tcp_server;
+            }
+        }
+        else
+        if($this->type === SimpleSocketTypeEnum::TCP_CLIENT)
+        {
+            if($this->tcp_client !== null)
+            {
+                $p_param->simple_socket = $this->tcp_client;
+            }
+        }
     }
 
     /**
      * 生成インスタンスのインターフェースを取得
      * 
-     * @return ISimpleSocketUdp|null 生成インスタンスのインターフェース or null（該当するインターフェースなし）
+     * @return ISimpleSocketUdp|ISimpleSocketTcpServer|ISimpleSocketTcpClient|null 生成インスタンスのインターフェース or null（該当するインターフェースなし）
      */
-    public function generate(): ISimpleSocketUdp|null
+    public function generate(): ISimpleSocketUdp|ISimpleSocketTcpServer|ISimpleSocketTcpClient|null
     {
         if($this->type === SimpleSocketTypeEnum::UDP)
         {
@@ -185,6 +247,60 @@ final class SimpleSocketGenerator
             $this->i_udp = $this->udp;
             return $this->i_udp;
         }
+        else
+        if($this->type === SimpleSocketTypeEnum::TCP_SERVER)
+        {
+            $this->tcp_server = new SimpleSocketTcpServer($this->type, $this->host, $this->port, $this->downtime, $this->size, $this->buff_cnt, $this->lang, $this->limit);
+            if($this->log_writer !== null)
+            {
+                $this->tcp_server->setLogWriter($this->log_writer);
+            }
+            if($this->keep_running !== null)
+            {
+                $this->tcp_server->setKeepRunning($this->keep_running, ...$this->argv);
+            }
+            if($this->unit_parameter !== null)
+            {
+                $this->unit_parameter->simple_socket = $this->tcp_server;
+            }
+            $this->i_tcp_server = $this->tcp_server;
+            return $this->i_tcp_server;
+        }
+        else
+        if($this->type === SimpleSocketTypeEnum::TCP_CLIENT)
+        {
+            try
+            {
+                $this->tcp_client = new SimpleSocketTcpClient($this->type, $this->host, $this->port, $this->downtime, $this->size, $this->buff_cnt, $this->lang, $this->limit, $this->retry, $this->retry_interval);
+            }
+            catch(Exception $e)
+            {
+                if($this->log_writer !== null)
+                {
+                    $log_writer = $this->log_writer;
+                    $log_writer('error', ['Generate error' => $e->getMessage()]);
+                }
+                else
+                {
+                    printf("Generate error {$e->getMessage()}\n");
+                }
+                return null;
+            }
+            if($this->log_writer !== null)
+            {
+                $this->tcp_client->setLogWriter($this->log_writer);
+            }
+            if($this->keep_running !== null)
+            {
+                $this->tcp_client->setKeepRunning($this->keep_running, ...$this->argv);
+            }
+            if($this->unit_parameter !== null)
+            {
+                $this->unit_parameter->simple_socket = $this->tcp_client;
+            }
+            $this->i_tcp_client = $this->tcp_client;
+            return $this->i_tcp_client;
+        }
 
         return null;
     }
@@ -203,6 +319,22 @@ final class SimpleSocketGenerator
             if($this->udp !== null)
             {
                 $ret = $this->udp->cycleDriven($p_cycle_interval);
+            }
+        }
+        else
+        if($this->type === SimpleSocketTypeEnum::TCP_SERVER)
+        {
+            if($this->tcp_server !== null)
+            {
+                $ret = $this->tcp_server->cycleDriven($p_cycle_interval);
+            }
+        }
+        else
+        if($this->type === SimpleSocketTypeEnum::TCP_CLIENT)
+        {
+            if($this->tcp_client !== null)
+            {
+                $ret = $this->tcp_client->cycleDriven($p_cycle_interval);
             }
         }
 
@@ -230,6 +362,22 @@ final class SimpleSocketGenerator
             if($this->udp !== null)
             {
                 $ret = $this->udp->shutdownAll();
+            }
+        }
+        else
+        if($this->type === SimpleSocketTypeEnum::TCP_SERVER)
+        {
+            if($this->tcp_server !== null)
+            {
+                $ret = $this->tcp_server->shutdownAll();
+            }
+        }
+        else
+        if($this->type === SimpleSocketTypeEnum::TCP_CLIENT)
+        {
+            if($this->tcp_client !== null)
+            {
+                $ret = $this->tcp_client->shutdownAll();
             }
         }
 

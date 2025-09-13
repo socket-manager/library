@@ -531,16 +531,14 @@ final class SimpleSocketTcpServer implements ISimpleSocketTcpServer
     {
         if($this->udp_flg === true)
         {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::FOR_TCP->message($this->lang)]);
-            return false;
+            throw new Exception(LogMessageEnum::FOR_TCP->message($this->lang));
         }
 
         // Create TCP/IP sream socket
         $w_ret = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
         if($w_ret === false)
         {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket()]);
-            return false;
+            throw new Exception(LogMessageEnum::SOCKET_ERROR->socket());
         }
         $soc = $w_ret;
 
@@ -548,48 +546,42 @@ final class SimpleSocketTcpServer implements ISimpleSocketTcpServer
         $w_ret = socket_set_option($soc, SOL_SOCKET, SO_REUSEADDR, 1);
         if($w_ret === false)
         {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_OPTION_SETTING_FAIL->message($this->lang)]);
-            return false;
+            throw new Exception(LogMessageEnum::SOCKET_OPTION_SETTING_FAIL->message($this->lang));
         }
 
         // send buffer
         $w_ret = socket_set_option($soc, SOL_SOCKET, SO_SNDBUF, $this->buffer_size);
         if($w_ret === false)
         {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_OPTION_SETTING_FAIL->message($this->lang)]);
-            return false;
+            throw new Exception(LogMessageEnum::SOCKET_OPTION_SETTING_FAIL->message($this->lang));
         }
 
         // receive buffer
         $w_ret = socket_set_option($soc, SOL_SOCKET, SO_RCVBUF, $this->buffer_size);
         if($w_ret === false)
         {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_OPTION_SETTING_FAIL->message($this->lang)]);
-            return false;
+            throw new Exception(LogMessageEnum::SOCKET_OPTION_SETTING_FAIL->message($this->lang));
         }
 
         // bind socket to specified host
         $w_ret = socket_bind($soc, $this->host, $this->port);
         if($w_ret === false)
         {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
-            return false;
+            throw new Exception(LogMessageEnum::SOCKET_ERROR->socket($soc));
         }
 
         // listen to port
         $w_ret = socket_listen($soc);
         if($w_ret === false)
         {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
-            return false;
+            throw new Exception(LogMessageEnum::SOCKET_ERROR->socket($soc));
         }
 
         // ソケットディスクリプタの生成
         $w_ret = $this->createDescriptor($soc, true);
         if($w_ret === false)
         {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_CREATE_FAIL->message($this->lang)]);
-            return false;
+            throw new Exception(LogMessageEnum::SOCKET_CREATE_FAIL->message($this->lang));
         }
         $des = $w_ret;
 

@@ -231,7 +231,23 @@ final class SimpleSocketGenerator
     {
         if($this->type === SimpleSocketTypeEnum::UDP)
         {
-            $this->udp = new SimpleSocketUdp($this->type, $this->host, $this->port, $this->downtime, $this->size, $this->buff_cnt, $this->lang);
+            try
+            {
+                $this->udp = new SimpleSocketUdp($this->type, $this->host, $this->port, $this->downtime, $this->size, $this->buff_cnt, $this->lang);
+            }
+            catch(Exception $e)
+            {
+                if($this->log_writer !== null)
+                {
+                    $log_writer = $this->log_writer;
+                    $log_writer('error', ['Generate error' => $e->getMessage()]);
+                }
+                else
+                {
+                    printf("Generate error {$e->getMessage()}\n");
+                }
+                return null;
+            }
             if($this->log_writer !== null)
             {
                 $this->udp->setLogWriter($this->log_writer);
@@ -250,7 +266,23 @@ final class SimpleSocketGenerator
         else
         if($this->type === SimpleSocketTypeEnum::TCP_SERVER)
         {
-            $this->tcp_server = new SimpleSocketTcpServer($this->type, $this->host, $this->port, $this->downtime, $this->size, $this->buff_cnt, $this->lang, $this->limit);
+            try
+            {
+                $this->tcp_server = new SimpleSocketTcpServer($this->type, $this->host, $this->port, $this->downtime, $this->size, $this->buff_cnt, $this->lang, $this->limit);
+            }
+            catch(Exception $e)
+            {
+                if($this->log_writer !== null)
+                {
+                    $log_writer = $this->log_writer;
+                    $log_writer('error', ['Generate error' => $e->getMessage()]);
+                }
+                else
+                {
+                    printf("Generate error {$e->getMessage()}\n");
+                }
+                return null;
+            }
             if($this->log_writer !== null)
             {
                 $this->tcp_server->setLogWriter($this->log_writer);

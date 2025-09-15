@@ -62,6 +62,11 @@ class Worker
     private RuntimeEnum $runtime_enum;
 
     /**
+     * @var SimpleEnum $simple_enum SimpleEnumのキャスト用
+     */
+    private SimpleEnum $simple_enum;
+
+    /**
      * @var LaravelEnum $laravel_enum LaravelEnumのキャスト用
      */
     private LaravelEnum $laravel_enum;
@@ -149,6 +154,7 @@ class Worker
             {
                 $usage .= UsageEnum::CRAFT->message($this->is_laravel, $this->lang);
                 $usage .= UsageEnum::RUNTIME->message($this->is_laravel, $this->lang);
+                $usage .= UsageEnum::SIMPLE->message($this->is_laravel, $this->lang);
                 $usage .= UsageEnum::LARAVEL->message($this->is_laravel, $this->lang);
                 $usage .= UsageEnum::SEPARATOR->message($this->is_laravel, $this->lang);
                 printf($usage);
@@ -190,6 +196,7 @@ class Worker
             // Usage表示
             $usage .= UsageEnum::CRAFT->message($this->is_laravel, $this->lang);
             $usage .= UsageEnum::RUNTIME->message($this->is_laravel, $this->lang);
+            $usage .= UsageEnum::SIMPLE->message($this->is_laravel, $this->lang);
             $usage .= UsageEnum::LARAVEL->message($this->is_laravel, $this->lang);
             printf($usage);
             return false;
@@ -246,6 +253,10 @@ class Worker
             // ランタイムコマンドの実行
             case CommandEnum::RUNTIME->value:
                 $w_ret = $this->runtimeExecution($parts[1]);
+                break;
+            // シンプルソケットコマンドの実行
+            case CommandEnum::SIMPLE->value:
+                $w_ret = $this->simpleExecution($parts[1]);
                 break;
             // Laravel操作の実行
             case CommandEnum::LARAVEL->value:
@@ -660,6 +671,118 @@ laravel_check:
             $this->success_sub_enum = $success_enum;
             $this->success_sub_enum->display($this->params[2].'StatusEnum');
         }
+        return true;
+    }
+
+    /**
+     * シンプルソケットコマンドの実行
+     * 
+     * @param string $p_typ シンプルソケットタイプ
+     * @param string $p_sep ディレクトリセパレータ
+     * @return bool true（成功） or false（失敗）
+     */
+    private function simpleExecution(string $p_typ, string $p_sep = DIRECTORY_SEPARATOR)
+    {
+        // クラス名引数の存在チェック
+        if(count($this->params) < 3)
+        {
+            FailureEnum::NO_CLASS_NAME->display(null, $this->lang);
+            return false;
+        }
+
+        // 一致するEnum値を取得
+        $simple_enum = null;
+        $typs = SimpleEnum::cases();
+        foreach($typs as $typ)
+        {
+            if($typ->value === $p_typ)
+            {
+                $simple_enum = $typ;
+                break;
+            }
+        }
+        if($simple_enum === null)
+        {
+            FailureEnum::COMMAND_FAIL->display(null, $this->lang);
+            return false;
+        }
+        $this->simple_enum = $simple_enum;
+
+        // パスの生成
+        $dir = $this->simple_enum->directory();
+        $full_path = $this->path.$p_sep.'app'.$p_sep.$dir;
+
+        // ファイル存在チェック
+        $create_file = $full_path.$p_sep.$this->params[2].'.php';
+        if(file_exists($create_file))
+        {
+            FailureEnum::EXISTING_CLASS->display($this->params[2], $this->lang);
+            return false;
+        }
+
+        // ディレクトリ生成
+        if(is_dir($full_path) === false)
+        {
+            mkdir($full_path);
+        }
+
+        // テンプレートのパスを取得
+        $class = $this->simple_enum->class();
+        $template_path = $this->path.$p_sep.'vendor'.$p_sep.'socket-manager'.$p_sep.'library'.$p_sep.'src'.$p_sep.'FrameWork'.$p_sep.'Template'.$p_sep.$dir.$p_sep;
+
+        // ファイル作成
+        $file_data = file_get_contents($template_path.$class.'.php');
+        $file_data = str_replace($class, $this->params[2], $file_data);
+        if($p_typ === SimpleEnum::TCP_SERVER->value)
+        {
+            $file_data = str_replace('ISimpleSocket', 'ISimpleSocketTcpServer', $file_data);
+            $file_data = str_replace('SimpleSocketTypeEnum::', 'SimpleSocketTypeEnum::TCP_SERVER', $file_data);
+        }
+        else
+        if($p_typ === SimpleEnum::TCP_CLIENT->value)
+        {
+            $file_data = str_replace('ISimpleSocket', 'ISimpleSocketTcpClient', $file_data);
+            $file_data = str_replace('SimpleSocketTypeEnum::', 'SimpleSocketTypeEnum::TCP_CLIENT', $file_data);
+        }
+        else
+        if($p_typ === SimpleEnum::UDP->value)
+        {
+            $file_data = str_replace('ISimpleSocket', 'ISimpleSocketUdp', $file_data);
+            $file_data = str_replace('SimpleSocketTypeEnum::', 'SimpleSocketTypeEnum::UDP', $file_data);
+        }
+
+        // 識別子の変換
+        $app_name = strtolower($this->params[2][0]);
+        $cnt = strlen($this->params[2]);
+        for($i = 1; $i < $cnt; $i++)
+        {
+            if(ctype_upper($this->params[2][$i]))
+            {
+                $app_name .= '-'.strtolower($this->params[2][$i]);
+            }
+            else
+            {
+                $app_name .= $this->params[2][$i];
+            }
+        }
+        $file_data = str_replace('template-application', $app_name, $file_data);
+
+        file_put_contents($create_file, $file_data);
+
+        // 成功メッセージ
+        $success_enum = null;
+        $typs = SuccessEnum::cases();
+        foreach($typs as $typ)
+        {
+            if($typ->value === $this->simple_enum->value)
+            {
+                $success_enum = $typ;
+                break;
+            }
+        }
+        $this->success_enum = $success_enum;
+        $this->success_enum->display($this->params[2], $this->lang);
+
         return true;
     }
 

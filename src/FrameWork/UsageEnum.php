@@ -93,6 +93,28 @@ EOD;
 EOD;
 
     /**
+     * @var string simpleコマンド共通定義（日本語）
+     */
+    private const CONST_JA_SIMPLE_FOR_LARAVEL =
+<<<EOD
+ \033[33msimple\033[m
+  \033[32msimple:tcp-server\033[m <メイン処理のクラス名>        TCPサーバー用メイン処理クラスの生成
+  \033[32msimple:tcp-client\033[m <メイン処理のクラス名>        TCPクライアント用メイン処理クラスの生成
+  \033[32msimple:udp\033[m <メイン処理のクラス名>               UDP通信用メイン処理クラスの生成
+EOD;
+
+    /**
+     * @var string simpleコマンド共通定義（英語）
+     */
+    private const CONST_EN_SIMPLE_FOR_LARAVEL =
+<<<EOD
+ \033[33msimple\033[m
+  \033[32msimple:tcp-server\033[m <Main processing class name>          Generating the main processing class for the TCP server
+  \033[32msimple:tcp-client\033[m <Main processing class name>          Generating the main processing class for the TCP client
+  \033[32msimple:udp\033[m <Main processing class name>                 Generating the main processing class for UDP communication
+EOD;
+
+    /**
      * @var string craftコマンドオリジナル定義（日本語）
      */
     private const CONST_JA_CRAFT_NOT_LARAVEL =
@@ -159,6 +181,11 @@ EOD;
     case RUNTIME = 55;
 
     /**
+     * @var int simpleコマンド
+     */
+    case SIMPLE = 57;
+
+    /**
      * @var int Laravelコマンド
      */
     case LARAVEL = 60;
@@ -198,6 +225,7 @@ EOD;
                 self::MAIN_EMPTY => "  \033[34mEmpty...\033[m\n",
                 self::CRAFT => $craft,
                 self::RUNTIME => self::CONST_JA_RUNTIME_FOR_LARAVEL."\n",
+                self::SIMPLE => self::CONST_JA_SIMPLE_FOR_LARAVEL."\n",
                 self::LARAVEL => $laravel,
                 self::SEPARATOR => self::CONST_SEPARATOR
             };
@@ -220,6 +248,7 @@ EOD;
                 self::MAIN_EMPTY => "  \033[34mEmpty...\033[m\n",
                 self::CRAFT => $craft,
                 self::RUNTIME => self::CONST_EN_RUNTIME_FOR_LARAVEL."\n",
+                self::SIMPLE => self::CONST_EN_SIMPLE_FOR_LARAVEL."\n",
                 self::LARAVEL => $laravel,
                 self::SEPARATOR => self::CONST_SEPARATOR
             };

@@ -80,6 +80,21 @@ enum SuccessEnum: string
     case MAIN = CraftEnum::MAIN->value;
 
     /**
+     * @var string TCPサーバーシンプルソケットのメイン処理クラス生成
+     */
+    case TCP_SERVER = SimpleEnum::TCP_SERVER->value;
+
+    /**
+     * @var string TCPクライアントシンプルソケットのメイン処理クラス生成
+     */
+    case TCP_CLIENT = SimpleEnum::TCP_CLIENT->value;
+
+    /**
+     * @var string UDPシンプルソケットのメイン処理クラス生成
+     */
+    case UDP = SimpleEnum::UDP->value;
+
+    /**
      * @var string 設定ファイル生成
      */
     case SETTING = CraftEnum::SETTING->value;
@@ -125,6 +140,9 @@ enum SuccessEnum: string
                 self::UNITS_QUEUE_ENUM => 'ランタイムUNITのキュー名Enumの生成に成功しました',
                 self::UNITS_STATUS_ENUM => 'ランタイムUNITのステータス名Enumの生成に成功しました',
                 self::MAIN => 'メイン処理クラスの生成に成功しました',
+                self::TCP_SERVER => 'TCPサーバーのメイン処理クラス生成に成功しました',
+                self::TCP_CLIENT => 'TCPクライアントのメイン処理クラス生成に成功しました',
+                self::UDP => 'UDP通信のメイン処理クラス生成に成功しました',
                 self::SETTING => '設定ファイルの生成に成功しました',
                 self::LOCALE => 'メッセージファイルの生成に成功しました',
                 self::COMMAND_FOR_LARAVEL => 'Laravelコマンドクラスの生成に成功しました'
@@ -147,6 +165,9 @@ enum SuccessEnum: string
                 self::UNITS_QUEUE_ENUM => 'Successfully generated queue name Enum for runtime UNIT',
                 self::UNITS_STATUS_ENUM => 'Successfully generated status name Enum for runtime UNIT',
                 self::MAIN => 'Successfully generated main processing class',
+                self::TCP_SERVER => 'The TCP server main processing class was successfully generated',
+                self::TCP_CLIENT => 'The TCP client main processing class was successfully generated',
+                self::UDP => 'The main processing class for UDP communication was successfully generated',
                 self::SETTING => 'Successfully generated configuration file',
                 self::LOCALE => 'Successfully generated message file',
                 self::COMMAND_FOR_LARAVEL => 'Successfully generated Laravel command class'

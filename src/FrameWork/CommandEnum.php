@@ -30,6 +30,11 @@ enum CommandEnum: string
     case RUNTIME = 'runtime';
 
     /**
+     * @var 生成アウトプット（シンプルソケット用）
+     */
+    case SIMPLE = 'simple';
+
+    /**
      * @var Laravel操作
      */
     case LARAVEL = 'laravel';
@@ -50,6 +55,7 @@ enum CommandEnum: string
         {
             self::CRAFT => self::CRAFT->value,
             self::RUNTIME => self::RUNTIME->value,
+            self::SIMPLE => self::SIMPLE->value,
             self::LARAVEL => self::LARAVEL->value
         };
     }

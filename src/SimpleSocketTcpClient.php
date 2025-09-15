@@ -362,7 +362,11 @@ final class SimpleSocketTcpClient implements ISimpleSocketTcpClient
                 // 接続IDが一致
                 if($cid === $chg['connection_id'])
                 {
-                    $this->read($cid);
+                    $w_ret = $this->read($cid);
+                    if($w_ret === false)
+                    {
+                        return false;
+                    }
                     break;
                 }
             }
@@ -374,12 +378,20 @@ final class SimpleSocketTcpClient implements ISimpleSocketTcpClient
                 if($cnt > 0)
                 {
                     $buf = array_shift($this->descriptors[$cid]['send_buffers']);
-                    $this->write($cid, $buf['data']);
+                    $w_ret = $this->write($cid, $buf['data']);
+                    if($w_ret === false)
+                    {
+                        return false;
+                    }
                 }
             }
             else
             {
-                $this->write($cid, null);
+                $w_ret = $this->write($cid, null);
+                if($w_ret === false)
+                {
+                    return false;
+                }
             }
         }
 

@@ -153,8 +153,8 @@ final class SimpleSocketGenerator
      * 常時実行処理の登録
      * 
      * @param \Closure|string|null $p_keep_running 常時実行処理
-     *          第一パラメータ⇒シンプルソケットのインスタンス
-     *          第二パラメータ以降⇒$p_argvの可変引数
+     *          - 第一パラメータ⇒シンプルソケットのインスタンス
+     *          - 第二パラメータ以降⇒$p_argvの可変引数
      * @param mixed[] $p_argv クロージャに渡す可変引数
      */
     public function setKeepRunning(\Closure|string|null $p_keep_running, ...$p_argv)
@@ -187,12 +187,11 @@ final class SimpleSocketGenerator
     }
 
     /**
-     * 常時実行処理の登録
+     * SocketManagerとの連携
      * 
-     * @param \Closure|string|null $p_keep_running 常時実行処理
-     *          第一パラメータ⇒シンプルソケットのインスタンス
-     *          第二パラメータ以降⇒$p_argvの可変引数
-     * @param mixed[] $p_argv クロージャに渡す可変引数
+     * - UNITパラメータインスタンスの"simple_socket"プロパティにシンプルソケットインスタンスが設定されます
+     * 
+     * @param SocketManagerParameter $p_param UNITパラメータインスタンス
      */
     public function setUnitParameter(SocketManagerParameter $p_param)
     {

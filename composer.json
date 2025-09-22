@@ -1,8 +1,18 @@
 {
     "name": "socket-manager/library",
-    "description": "SocketManager Library",
+    "description": "SOCKET-MANAGER Library: フレームワークのライブラリ本体",
     "type": "library",
     "license": "MIT",
+    "keywords": [
+        "php",
+        "framework",
+        "socket-server",
+        "tcp-socket",
+        "network-library",
+        "udp-socket",
+        "library-repository",
+        "socket-manager"
+    ],
     "autoload": {
         "psr-4": {
             "SocketManager\\Library\\": "src/",

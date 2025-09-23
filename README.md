@@ -1,4 +1,4 @@
-# SOCKET-MANAGER Library | PHP用ソケット通信フレームワーク
+# SOCKET-MANAGER Library：PHP用ソケット通信フレームワーク
 
 SOCKET-MANAGER Libraryは、**PHPで高性能なソケット通信サーバー**開発を支援するためのオープンソースフレームワークです。TCP、UDP、WebSocketなどの通信方式に対応し、**非同期イベントループ**や**コルーチン**による効率的な並列処理、**スケーラブルな構成**を実現します。
 

@@ -1,17 +1,21 @@
-# SOCKET-MANAGER Library
-SOCKET-MANAGER Framework（ソケットマネージャーフレームワーク）はソケット通信サーバーの開発を支援するための環境で、このライブラリはそのフレームワークの基盤となるものです。<br />
-以下のプロジェクトと連携して使います。<br />
+# SOCKET-MANAGER Library | PHP用ソケット通信フレームワーク
 
-<ul>
-    <li><a href="https://github.com/socket-manager/demo-project">demo-project</a>（マインクラフトと連携できるWebsocketサーバーのデモ環境）</li>
-    <li><a href="https://github.com/socket-manager/websocket-project">websocket-project</a>（Websocketサーバーの開発環境）</li>
-    <li><a href="https://github.com/socket-manager/new-project">new-project</a>（新規プロジェクト開発環境）</li>
-    <li><a href="https://github.com/socket-manager/contents-project">contents-project</a>（マインクラフト専用のコンテンツ環境）</li>
-</ul>
+SOCKET-MANAGER Libraryは、**PHPで高性能なソケット通信サーバー**開発を支援するためのオープンソースフレームワークです。TCP、UDP、WebSocketなどの通信方式に対応し、**非同期イベントループ**や**コルーチン**による効率的な並列処理、**スケーラブルな構成**を実現します。
 
-詳しい使い方は<a href="https://socket-manager.github.io/document/">こちら</a>をご覧ください。<br />
+## 主な連携プロジェクト
 
-Laravelプロジェクトと連携する場合は<a href="https://socket-manager.github.io/document/laravel.html">こちら</a>をご覧ください。
+本ライブラリは、以下の関連プロジェクトと組み合わせて利用できます。
+
+- [demo-project](https://github.com/socket-manager/demo-project) : マインクラフトと連携できるWebSocketサーバーのデモ環境
+- [websocket-project](https://github.com/socket-manager/websocket-project) : WebSocketサーバー開発環境
+- [new-project](https://github.com/socket-manager/new-project) : 新規プロジェクト開発環境
+- [contents-project](https://github.com/socket-manager/contents-project) : マインクラフト専用コンテンツ環境
+
+## ドキュメント・導入ガイド
+
+詳しい使い方やセットアップ方法は[公式ドキュメント](https://socket-manager.github.io/document/)をご覧ください。
+
+- Laravelプロジェクトとの連携は[Laravel連携ガイド](https://socket-manager.github.io/document/laravel.html)参照
 
 ## 主要機能一覧
 当フレームワークが提供する主要な機能と特徴について一覧で示します。これらの機能により、高度なスケーラビリティと柔軟な実装が可能となります。

@@ -11,7 +11,8 @@
         "network-library",
         "udp-socket",
         "library-repository",
-        "socket-manager"
+        "socket-manager",
+        "cuei"
     ],
     "autoload": {
         "psr-4": {

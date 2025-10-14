@@ -2,6 +2,9 @@
     "name": "socket-manager/library",
     "description": "SOCKET-MANAGER Library: フレームワークのライブラリ本体",
     "type": "library",
+    "support": {
+        "docs": "https://socket-manager.github.io/document/"
+    },
     "license": "MIT",
     "keywords": [
         "php",

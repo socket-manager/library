@@ -30,7 +30,7 @@ class RuntimeManager
     /**
      * インターバル間隔
      */
-    private const INTERVAL_SPAN = 30000000;
+    private const INTERVAL_SPAN = 10000000;
 
 
     //--------------------------------------------------------------------------

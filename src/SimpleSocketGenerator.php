@@ -48,7 +48,7 @@ final class SimpleSocketGenerator
     private ?int $retry;
     private ?int $retry_interval;
 
-    private ?SocketManagerParameter $unit_parameter = null;
+    private SocketManagerParameter|RuntimeManagerParameter|null $unit_parameter = null;
     private ?array $argv = null;
     private \Closure|string|null $log_writer = null;
     private \Closure|string|null $keep_running = null;
@@ -191,9 +191,9 @@ final class SimpleSocketGenerator
      * 
      * - UNITパラメータインスタンスの"simple_socket"プロパティにシンプルソケットインスタンスが設定されます
      * 
-     * @param SocketManagerParameter $p_param UNITパラメータインスタンス
+     * @param SocketManagerParameter|RuntimeManagerParameter $p_param UNITパラメータインスタンス
      */
-    public function setUnitParameter(SocketManagerParameter $p_param)
+    public function setUnitParameter(SocketManagerParameter|RuntimeManagerParameter $p_param)
     {
         $this->unit_parameter = $p_param;
         if($this->type === SimpleSocketTypeEnum::UDP)

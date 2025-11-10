@@ -31,6 +31,12 @@ class RuntimeManagerParameter implements IUnitParameter
      */
     private string $lang = 'ja';
 
+    /**
+     * シンプルソケットインスタンス
+     * 
+     */
+    public ISimpleSocketUdp|ISimpleSocketTcpServer|ISimpleSocketTcpClient|null $simple_socket = null;
+
 
     //--------------------------------------------------------------------------
     // メソッド

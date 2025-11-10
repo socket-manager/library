@@ -555,6 +555,9 @@ class SocketManager
             }
             $timestamp = $w_ret['last_access_timestamp'];
 
+            // UNITパラメータへ接続IDを設定
+            $this->unit_parameter->setConnectionId($des['connection_id']);
+
             // アライブチェック
             if($flg_exec === true)  // プロトコル部実行中のタイムアウトを検査
             {
@@ -648,9 +651,6 @@ class SocketManager
                     $this->setQueueNameForStart('protocol_names', $cid, ProtocolQueueEnum::ALIVE->value);
                 }
             }
-
-            // UNITパラメータへ接続IDを設定
-            $this->unit_parameter->setConnectionId($des['connection_id']);
 
             // プロトコルUNITの実行
             $w_ret = $this->executeUnit($cid, 'protocol_names');

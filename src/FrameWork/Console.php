@@ -151,6 +151,10 @@ abstract class Console implements IConsole
     {
         foreach($this->params as $param)
         {
+            if(!isset($param['name']))
+            {
+                return false;
+            }
             if($param['name'] === $p_name)
             {
                 if($param['null'] === false)

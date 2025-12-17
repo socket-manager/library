@@ -429,6 +429,34 @@ class SocketManagerParameter implements IUnitParameter
     }
 
     /**
+     * タイマー処理
+     * 
+     * @param int $p_ms タイマ値（ms）
+     */
+    final public function setTimeout(int $p_ms)
+    {
+        $timer = 0;
+        $now = microtime(true) * 1000;
+        $tmp = $this->getTempBuff(['__timeout']);
+        if($tmp === null || (isset($tmp['__timeout']) && $tmp['__timeout'] === null))
+        {
+            $timer = $p_ms + $now;
+            $this->setTempBuff(['__timeout' => $timer]);
+        }
+        else
+        {
+            $timer = $tmp['__timeout'];
+        }
+
+        if($timer >= $now)
+        {
+            $this->manager->throwBreak();
+        }
+
+        $this->setTempBuff(['__timeout' => null]);
+    }
+
+    /**
      * プロトコルUNIT処理を中断する
      * 
      * 実行されると例外キャッチ時に切断処理は無視されて処理を継続する

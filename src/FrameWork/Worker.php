@@ -174,7 +174,7 @@ class Worker
 
                 // 識別子判定
                 $identifer = $this->console->getIdentifer();
-                if(strlen($identifer) <= 0)
+                if(strlen($identifer) <= 0 || strpos($identifer, 'app:') !== 0)
                 {
                     continue;
                 }
@@ -290,7 +290,7 @@ laravel_check:
         {
             // 識別子の一致確認
             $w_ret = $console->getIdentifer();
-            if($w_ret === $this->params[1])
+            if($w_ret === $this->params[1] && strpos($w_ret, 'app:') === 0)
             {
                 $this->console = $console;
             }

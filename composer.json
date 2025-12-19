@@ -21,7 +21,10 @@
         "psr-4": {
             "SocketManager\\Library\\": "src/",
             "SocketManager\\Library\\Bin\\": "bin/"
-        }
+        },
+        "files": [
+            "src/FrameWork/helpers.php"
+        ]
     },
     "authors": [
         {

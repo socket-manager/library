@@ -1,6 +1,10 @@
 # SOCKET-MANAGER Library：PHP用ソケット通信フレームワーク
+※ **REST-API / RESTful-API サーバー開発にも対応**
 
-SOCKET-MANAGER Libraryは、**PHPで高性能なソケット通信サーバー**開発を支援するためのオープンソースフレームワークです。TCP、UDP、WebSocketなどの通信方式に対応し、**非同期イベントループ**や**コルーチン**による効率的な並列処理、**スケーラブルな構成**を実現します。
+SOCKET-MANAGER Library は、**PHPで高性能なソケット通信サーバー**を構築するためのオープンソースフレームワークです。  
+TCP、UDP、WebSocket などの通信方式に加え、**REST-API / RESTful-API サーバー開発にも正式対応**しました。
+
+フレームワーク本体には **非同期イベントループ**、**コルーチン**、そして **ビルトインのステートマシン**が統合されており、リアルタイム通信だけでなく、REST-API における **Chunked Transfer / SSE / Range送信** など、状態遷移を伴う高度な API 処理も安定して実装できます。
 
 ---
 
@@ -12,6 +16,7 @@ SOCKET-MANAGER Libraryは、**PHPで高性能なソケット通信サーバー**
 - [websocket-project](https://github.com/socket-manager/websocket-project) : WebSocketサーバー開発環境
 - [new-project](https://github.com/socket-manager/new-project) : 新規プロジェクト開発環境
 - [contents-project](https://github.com/socket-manager/contents-project) : マインクラフト専用コンテンツ環境
+- [rest-api](https://github.com/socket-manager/rest-api) : **REST-API / RESTful-API サーバー開発環境（PSR-7準拠）**
 
 ---
 
@@ -19,7 +24,10 @@ SOCKET-MANAGER Libraryは、**PHPで高性能なソケット通信サーバー**
 
 詳しい使い方やセットアップ方法は[公式ドキュメント](https://socket-manager.github.io/document/)をご覧ください。
 
-- Laravelプロジェクトとの連携は[Laravel連携ガイド](https://socket-manager.github.io/document/laravel.html)参照
+- Laravel プロジェクトとの連携は  
+  [Laravel連携ガイド](https://socket-manager.github.io/document/laravel.html) を参照  
+- REST-API / RESTful-API 開発については  
+  [REST-API 開発環境](https://github.com/socket-manager/rest-api) を参照
 
 ---
 
@@ -30,6 +38,8 @@ SOCKET-MANAGER Libraryは、**PHPで高性能なソケット通信サーバー**
 | **実装形態** | **コマンドベースのスキャフォールディング（標準実装／デベロッパーによる追加構築不要）** |
 | **非同期モデル** | **独自仕様のイベントループ / コルーチン対応（ステータス維持したまま処理を中断可能）** |
 | **通信方式** | **TCP / UDP / WebSocket / 独自プロトコル対応** |
+| **REST-API 対応** | **PSR-7準拠の REST-API / RESTful-API を実装可能（イベントハンドラ型 / ステートマシン型）** |
+| **ステートマシン** | **Chunked / SSE / Range送信など、状態遷移を伴う API 処理を確実に制御** |
 | **IPC形態** | **INETソケットを利用し、異なるプロトコルの共存が可能** |
 | **スケールアップ** | **プロセス単位で可能（ポート変更による動的調整）** |
 | **スケールアウト** | **プロセス単位で可能（複数サーバー間で負荷分散）** |
@@ -43,6 +53,8 @@ SOCKET-MANAGER Libraryは、**PHPで高性能なソケット通信サーバー**
 - **独自イベントループ/コルーチン**：プロセスやスレッドに頼らず通信制御を実現  
 - **設定の柔軟性**：設定ファイルや翻訳リソースの柔軟な切り替えと管理  
 - **軽量な導入**：PHP と sockets モジュールのみで動作する、シンプルなセットアップ
+- **REST-API との親和性**：ステートマシンにより、Chunked Transfer や SSE の分割送信を安定制御  
+- **Web / ゲーム / IoT など幅広い用途に対応**
 
 ---
 

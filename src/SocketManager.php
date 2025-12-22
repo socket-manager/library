@@ -2424,10 +2424,6 @@ class SocketManager
                     $this->shutdown($p_cid);	// ソケット緊急切断
                     return false;
                 }
-                else
-                {
-                    $this->logWriter('info', $e->getArrayMessage());
-                }
             }
             else
             {

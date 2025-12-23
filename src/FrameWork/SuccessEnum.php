@@ -105,6 +105,11 @@ enum SuccessEnum: string
     case LOCALE = CraftEnum::LOCALE->value;
 
     /**
+     * @var string ファイル生成（汎用メッセージ用）
+     */
+    case FILE = 'file';
+
+    /**
      * @var string コマンドクラス生成（Laravel用）
      */
     case COMMAND_FOR_LARAVEL = 'command_for_laravel';
@@ -145,6 +150,7 @@ enum SuccessEnum: string
                 self::UDP => 'UDP通信のメイン処理クラス生成に成功しました',
                 self::SETTING => '設定ファイルの生成に成功しました',
                 self::LOCALE => 'メッセージファイルの生成に成功しました',
+                self::FILE => 'ファイルの生成に成功しました',
                 self::COMMAND_FOR_LARAVEL => 'Laravelコマンドクラスの生成に成功しました'
             };
         }
@@ -170,6 +176,7 @@ enum SuccessEnum: string
                 self::UDP => 'The main processing class for UDP communication was successfully generated',
                 self::SETTING => 'Successfully generated configuration file',
                 self::LOCALE => 'Successfully generated message file',
+                self::FILE => 'Successfully generated file',
                 self::COMMAND_FOR_LARAVEL => 'Successfully generated Laravel command class'
             };
         }

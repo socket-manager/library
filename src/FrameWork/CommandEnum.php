@@ -39,6 +39,11 @@ enum CommandEnum: string
      */
     case LARAVEL = 'laravel';
 
+    /**
+     * @var 生成アウトプット（カスタムコマンド）
+     */
+    case CUSTOM = 'custom';
+
 
     //--------------------------------------------------------------------------
     // メソッド
@@ -56,7 +61,8 @@ enum CommandEnum: string
             self::CRAFT => self::CRAFT->value,
             self::RUNTIME => self::RUNTIME->value,
             self::SIMPLE => self::SIMPLE->value,
-            self::LARAVEL => self::LARAVEL->value
+            self::LARAVEL => self::LARAVEL->value,
+            self::CUSTOM => self::CUSTOM->value
         };
     }
 

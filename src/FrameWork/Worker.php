@@ -18,6 +18,15 @@ use Exception;
 class Worker
 {
     //--------------------------------------------------------------------------
+    // 定数
+    //--------------------------------------------------------------------------
+
+    /**
+     * @var string カスタムコマンドディレクトリ
+     */
+    private const CUSTOM_COMMAND_DIRECTORY = 'commands';
+
+    //--------------------------------------------------------------------------
     // プロパティ
     //--------------------------------------------------------------------------
 
@@ -96,6 +105,11 @@ class Worker
      */
     public static array $locales = [];
 
+    /**
+     * @var array $locales メッセージファイルの読み込み先
+     */
+    public CustomScaffolder $custom_scaffolder;
+
 
     //--------------------------------------------------------------------------
     // メソッド
@@ -116,6 +130,8 @@ class Worker
         {
             $this->is_laravel = true;
         }
+
+        $this->custom_scaffolder = new CustomScaffolder();
     }
 
     /**
@@ -149,6 +165,9 @@ class Worker
         {
             $usage = UsageEnum::HEADER->message($this->is_laravel, $this->lang);
 
+            // カスタムコマンドのUsage取得
+            $custom_usage = $this->custom_scaffolder->createUsage($this->path.DIRECTORY_SEPARATOR.self::CUSTOM_COMMAND_DIRECTORY, $this->lang);
+
             // Laravel環境の場合
             if($this->is_laravel === true)
             {
@@ -156,6 +175,10 @@ class Worker
                 $usage .= UsageEnum::RUNTIME->message($this->is_laravel, $this->lang);
                 $usage .= UsageEnum::SIMPLE->message($this->is_laravel, $this->lang);
                 $usage .= UsageEnum::LARAVEL->message($this->is_laravel, $this->lang);
+
+                // カスタムコマンドの追加
+                $usage .= $custom_usage;
+
                 $usage .= UsageEnum::SEPARATOR->message($this->is_laravel, $this->lang);
                 printf($usage);
                 require_once($this->path.'/artisan');
@@ -198,6 +221,10 @@ class Worker
             $usage .= UsageEnum::RUNTIME->message($this->is_laravel, $this->lang);
             $usage .= UsageEnum::SIMPLE->message($this->is_laravel, $this->lang);
             $usage .= UsageEnum::LARAVEL->message($this->is_laravel, $this->lang);
+
+            // カスタムコマンドの追加
+            $usage .= $custom_usage;
+
             printf($usage);
             return false;
         }
@@ -261,6 +288,10 @@ class Worker
             // Laravel操作の実行
             case CommandEnum::LARAVEL->value:
                 $w_ret = $this->laravelExecution($parts[1]);
+                break;
+            // カスタムコマンドの実行
+            case CommandEnum::CUSTOM->value:
+                $w_ret = $this->customExecution($parts[1]);
                 break;
             default:
                 goto laravel_check;
@@ -881,6 +912,28 @@ laravel_check:
         $this->success_enum->display($this->params[2], $this->lang);
 
         return true;
+    }
+
+    /**
+     * カスタムコマンドの実行
+     * 
+     * @param string $p_typ カスタムコマンドタイプ
+     * @param string $p_sep ディレクトリセパレータ
+     * @return bool true（成功） or false（失敗）
+     */
+    private function customExecution(string $p_typ, string $p_sep = DIRECTORY_SEPARATOR)
+    {
+        // クラス名引数の存在チェック
+        if(count($this->params) < 3)
+        {
+            FailureEnum::NO_CUSTOM_NAME->display(null, $this->lang);
+            return false;
+        }
+
+        // ファイルの生成
+        $ret = $this->custom_scaffolder->createCustom($this->path.$p_sep.self::CUSTOM_COMMAND_DIRECTORY, $p_typ, $this->params[2], $this->lang);
+
+        return $ret;
     }
 
     /**

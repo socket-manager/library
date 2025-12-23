@@ -54,6 +54,21 @@ enum FailureEnum: int
      */
     case EXISTING_FILE = 70;
 
+    /**
+     * @var int output定義がない（カスタムコマンド用）
+     */
+    case OUTPUT_NO_DEFINITION = 80;
+
+    /**
+     * @var int テンプレートがない（カスタムコマンド用）
+     */
+    case NO_TEMPLATE = 90;
+
+    /**
+     * @var int カスタム名がない（カスタムコマンド用）
+     */
+    case NO_CUSTOM_NAME = 100;
+
 
     //--------------------------------------------------------------------------
     // メソッド
@@ -79,7 +94,10 @@ enum FailureEnum: int
                 self::ARGUMENT_QUESTION_FAIL => '"?"有りの引数の後ろに"?"無しの引数は追加できません',
                 self::NO_CLASS_NAME => 'クラス名が指定されていません',
                 self::NON_EXISTENT_CLASS => '指定されたクラスファイルが存在しません',
-                self::EXISTING_FILE => '出力先のファイルが既に存在します'
+                self::EXISTING_FILE => '出力先のファイルが既に存在します',
+                self::OUTPUT_NO_DEFINITION => 'output が command.php で定義されていません',
+                self::NO_TEMPLATE => 'テンプレートが見つかりません',
+                self::NO_CUSTOM_NAME => 'カスタム名が指定されていません'
             };
         }
         else
@@ -93,7 +111,10 @@ enum FailureEnum: int
                 self::ARGUMENT_QUESTION_FAIL => 'Arguments without "?" cannot be added after arguments with "?"',
                 self::NO_CLASS_NAME => 'class name not specified',
                 self::NON_EXISTENT_CLASS => 'Specified class file does not exist',
-                self::EXISTING_FILE => 'Output file already exists'
+                self::EXISTING_FILE => 'Output file already exists',
+                self::OUTPUT_NO_DEFINITION => 'output is not defined in command.php',
+                self::NO_TEMPLATE => 'template not found',
+                self::NO_CUSTOM_NAME => 'No custom name specified'
             };
         }
 

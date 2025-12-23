@@ -39,7 +39,7 @@ EOD;
         {
             $usage .=
 <<<EOD
-  \033[32mcustom:{$command['config']['name']}\033[m <カスタム名> => {$command['config']['description']}
+  \033[32mcustom:{$command['config']['name']}\033[m <カスタム名> => {$command['config']['description']}\n
 EOD;
         }
 
@@ -147,7 +147,7 @@ EOD;
         // 既存ファイルチェック
         if(file_exists($output_path))
         {
-            FailureEnum::EXISTING_CLASS->display($p_custom_name, $p_lang);
+            FailureEnum::EXISTING_FILE->display($p_custom_name, $p_lang);
             return false;
         }
 
@@ -180,6 +180,12 @@ EOD;
     {
         return preg_replace_callback('/<%=\s*(\w+)\s*%>/', function ($matches) use ($p_vars) {
             $key = $matches[1];
+
+            if(!array_key_exists($key, $p_vars))
+            {
+                return '';
+            }
+
             return $p_vars[$key] ?? '';
         }, $p_template);
     }

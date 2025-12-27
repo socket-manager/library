@@ -178,15 +178,11 @@ EOD;
      */
     private function render(string $p_template, array $p_vars): string
     {
-        return preg_replace_callback('/<%=\s*(\w+)\s*%>/', function ($matches) use ($p_vars) {
-            $key = $matches[1];
-
-            if(!array_key_exists($key, $p_vars))
-            {
-                return '';
-            }
-
-            return $p_vars[$key] ?? '';
-        }, $p_template);
+        $template = $p_template;
+        foreach($p_vars as $key => $val)
+        {
+            $template = str_replace("<%= {$key} %>", $val, $template);
+        }
+        return $template;
     }
 }

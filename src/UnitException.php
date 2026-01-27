@@ -25,7 +25,7 @@ class UnitException extends Exception
     //--------------------------------------------------------------------------
 
     // UNITパラメータ
-    private IUnitParameter $param;
+    private ?IUnitParameter $param;
 
 
     //--------------------------------------------------------------------------
@@ -37,9 +37,9 @@ class UnitException extends Exception
      * 
      * @param string $p_msg メッセージ
      * @param int $p_cod コード
-     * @param IUnitParameter $p_param UNITパラメータ
+     * @param ?IUnitParameter $p_param UNITパラメータ
      */
-    public function __construct(string $p_msg = '', int $p_cod = 0, IUnitParameter $p_param)
+    public function __construct(string $p_msg = '', int $p_cod = 0, ?IUnitParameter $p_param = null)
     {
         parent::__construct($p_msg, $p_cod);
         $this->param = $p_param;
@@ -62,12 +62,19 @@ class UnitException extends Exception
      */
     public function getArrayMessage(): array
     {
+        $que = null;
+        $sta = null;
+        if($this->param !== null)
+        {
+            $que = $this->param->getQueueName();
+            $sta = $this->param->getStatusName();
+        }
         $ret =
         [
             'cod' => $this->getCode(),
             'msg' => $this->getMessage(),
-            'que' => $this->param->getQueueName(),
-            'sta' => $this->param->getStatusName(),
+            'que' => $que,
+            'sta' => $sta,
             'trace' => $this->getTraceAsString()
         ];
 

@@ -10,6 +10,8 @@ namespace SocketManager\Library;
 
 use Socket;
 use Exception;
+use SocketManager\Library\FrameWork\AdaptiveIoDriverFactory;
+use SocketManager\Library\FrameWork\IIoDriver;
 
 
 /**
@@ -249,12 +251,6 @@ class SocketManager
     private $emergency_callback = null;
 
     /**
-     * NEXT接続ID
-     * 
-     */
-    private int $next_connection_id = 0;
-
-    /**
      * 言語設定
      * 
      * デフォルト：'ja'
@@ -272,6 +268,12 @@ class SocketManager
      * 
      */
     private float $prev_microtime = 0;
+
+    /**
+     * I/O ドライバ
+     * 
+     */
+    private IIoDriver $iio_driver;
 
 
     //--------------------------------------------------------------------------
@@ -344,6 +346,11 @@ class SocketManager
             ob_end_flush();
         }
 
+        //--------------------------------------------------------------------------
+        // I/O ドライバの初期化
+        //--------------------------------------------------------------------------
+
+        $this->iio_driver = AdaptiveIoDriverFactory::create($this->sockets);
         return;
     }
 
@@ -1485,11 +1492,8 @@ class SocketManager
         // セレクト実行
         //--------------------------------------------------------------------------
 
-        $nul = null;
-        $chgs = $this->sockets;
-        $exp = null;
-        $w_ret = @socket_select($chgs, $nul, $exp, 0, $p_utimer);
-        if($w_ret === false)
+        $chgs = $this->iio_driver->waitEvents();
+        if($chgs === false)
         {
             $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket()]);
             return false;
@@ -1506,26 +1510,20 @@ class SocketManager
         $this->changed_descriptors = array();
         foreach($chgs as $chg)
         {
-            // ソケットの接続IDを取り出す
-            foreach($this->sockets as $no => $soc)
-            {
-                if($chg == $soc)
-                {
-                    $cid = $no;
-                }
-            }
-            if($cid == $this->await_connection_id)
+            $w_cid = '#'.$chg['cid'];
+            if($w_cid == $this->await_connection_id)
             {
                 $flg_connect = 1;
-                $w_ret = $this->getProperties($cid, ['udp']);
+                $w_ret = $this->getProperties($w_cid, ['udp']);
                 if($w_ret['udp'] === true)
                 {
                     $flg_connect = 2;
                 }
+                $cid = $w_cid;
             }
             else
             {
-                array_push($this->changed_descriptors, $this->descriptors[$cid]);
+                array_push($this->changed_descriptors, $this->descriptors[$w_cid]);
             }
         }
 
@@ -1672,6 +1670,7 @@ class SocketManager
         @socket_close($soc);
 
         // マネージャーのエントリからはずす
+        $this->iio_driver->unregister(substr($p_cid, 1));
         unset($this->sockets[$p_cid]);
         unset($this->descriptors[$p_cid]);
 
@@ -2445,8 +2444,10 @@ class SocketManager
      */
     private function createDescriptor(Socket $p_socket, bool $p_udp = false)
     {
+        $id = $this->iio_driver->register($p_socket);
+
         // ソケットの接続IDを生成
-        $cid = '#'.$this->next_connection_id;
+        $cid = '#'.$id;
 
         // ソケット要素の反映
         $this->sockets[$cid] = $p_socket;
@@ -2519,9 +2520,6 @@ class SocketManager
             $this->logWriter('error', [__METHOD__ => LogMessageEnum::NONBLOCK_SETTING_FAIL->message($this->lang)]);
             return false;
         }
-
-        // NEXT接続IDのカウントアップ
-        $this->next_connection_id++;
 
         return $this->descriptors[$cid];
     }

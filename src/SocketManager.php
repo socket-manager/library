@@ -1510,20 +1510,19 @@ class SocketManager
         $this->changed_descriptors = array();
         foreach($chgs as $chg)
         {
-            $w_cid = '#'.$chg['cid'];
-            if($w_cid == $this->await_connection_id)
+            if($chg['cid'] == $this->await_connection_id)
             {
                 $flg_connect = 1;
-                $w_ret = $this->getProperties($w_cid, ['udp']);
+                $w_ret = $this->getProperties($chg['cid'], ['udp']);
                 if($w_ret['udp'] === true)
                 {
                     $flg_connect = 2;
                 }
-                $cid = $w_cid;
+                $cid = $chg['cid'];
             }
             else
             {
-                array_push($this->changed_descriptors, $this->descriptors[$w_cid]);
+                array_push($this->changed_descriptors, $this->descriptors[$chg['cid']]);
             }
         }
 

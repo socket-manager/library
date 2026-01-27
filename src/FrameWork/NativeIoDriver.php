@@ -130,7 +130,7 @@ class NativeIoDriver implements IIoDriver
             }
 
             $ret[] = [
-                'cid'        => $ev->handle,
+                'cid'        => '#'.$ev->handle,
                 'sock'       => null,               // Native では不要。互換性のため残す
                 'type'       => $type,
                 'bytes'      => (int)$ev->bytes,

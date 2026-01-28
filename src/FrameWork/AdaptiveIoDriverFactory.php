@@ -23,14 +23,36 @@ class AdaptiveIoDriverFactory
             (filter_var(ini_get('ffi.enable'), FILTER_VALIDATE_BOOLEAN) || ini_get('ffi.enable') === 'preload')
         &&  (
                 (PHP_OS_FAMILY === 'Windows' && file_exists(__DIR__.'/driver/io_core_win.dll'))
-            // ||  (PHP_OS_FAMILY === 'Linux' && file_exists(__DIR__.'/driver/libio_core_linux.so'))
+            ||  (PHP_OS_FAMILY === 'Linux' && file_exists(__DIR__.'/driver/libio_core_linux.so'))
             )
         ){
+            switch(PHP_OS_FAMILY)
+            {
+                case 'Windows':
+                    $header_os = <<<CDEF
+                        typedef struct {
+                            WSAPOLLFD *fds;
+                            int count;
+                            int capacity;
+                        } io_context;
+CDEF;
+                    $lib = __DIR__ . '/driver/io_core_win.dll';
+                    break;
+                case 'Linux':
+                    $header_os = <<<CDEF
+                        typedef struct {
+                            int   epfd;
+                            int   capacity;
+                            int   count;
+                            void *evlist;
+                        } io_context;
+CDEF;
+                    $lib = __DIR__ . '/driver/libio_core_linux.so';
+                    break;
+            }
             $header = <<<CDEF
-                typedef struct {
-                    void* iocp;
-                } io_context;
-
+                {$header_os}
+    
                 typedef struct {
                     int     handle;
                     int     event_type;
@@ -73,15 +95,6 @@ class AdaptiveIoDriverFactory
                 // return: 0 = success, 非0 = error code
                 int io_core_close(io_context *ctx);
 CDEF;
-            switch(PHP_OS_FAMILY)
-            {
-                case 'Windows':
-                    $lib = __DIR__ . '/driver/io_core_win.dll';
-                    break;
-                case 'Linux':
-                    $lib = __DIR__ . '/driver/libio_core_linux.so';
-                    break;
-            }
             return new NativeIoDriver(FFI::cdef($header, $lib));
         }
         return new CompatibleIoDriver($p_sockets);

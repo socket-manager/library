@@ -30,6 +30,15 @@ class AdaptiveIoDriverFactory
             {
                 case 'Windows':
                     $header_os = <<<CDEF
+                        typedef unsigned int SOCKET;
+                        typedef short SHORT;
+
+                        typedef struct {
+                            SOCKET fd;
+                            SHORT  events;
+                            SHORT  revents;
+                        } WSAPOLLFD;
+
                         typedef struct {
                             WSAPOLLFD *fds;
                             int count;

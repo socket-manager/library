@@ -1,0 +1,6 @@
+ARG_ENABLE("socketsfd", "Enable socketsfd extension", "no");
+
+if (PHP_SOCKETSFD == "yes") {
+    ADD_EXTENSION_DEP("socketsfd", "sockets");
+    EXTENSION("socketsfd", "socketsfd.c");
+}

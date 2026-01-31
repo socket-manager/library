@@ -104,7 +104,9 @@ CDEF;
                 // return: 0 = success, 非0 = error code
                 int io_core_close(io_context *ctx);
 CDEF;
-            return new NativeIoDriver(FFI::cdef($header, $lib));
+            $driver = new NativeIoDriver(FFI::cdef($header, $lib));
+            printf("\033[1;32mBoot sequence finished — running in High‑Performance Mode.\033[0m\n");
+            return $driver;
         }
         return new CompatibleIoDriver($p_sockets);
     }

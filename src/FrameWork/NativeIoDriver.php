@@ -52,7 +52,7 @@ class NativeIoDriver implements IIoDriver
      */
     public function register($p_sock): int
     {
-        $handle = socketfd($p_sock);
+        $handle = socketsfd($p_sock);
         $this->ffi->io_register(FFI::addr($this->ctx), $handle);
         return $handle;
     }

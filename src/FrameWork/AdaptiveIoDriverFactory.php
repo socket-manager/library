@@ -105,7 +105,7 @@ CDEF;
                 int io_core_close(io_context *ctx);
 CDEF;
             $driver = new NativeIoDriver(FFI::cdef($header, $lib));
-            printf("\033[1;32mBoot sequence finished — running in High‑Performance Mode.\033[0m\n");
+            printf("\033[1;32mBoot sequence finished — running in Adaptive IO-Driver Mode.\033[0m\n");
             return $driver;
         }
         return new CompatibleIoDriver($p_sockets);

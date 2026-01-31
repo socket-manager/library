@@ -56,6 +56,6 @@ zend_module_entry socketsfd_module_entry = {
     STANDARD_MODULE_PROPERTIES
 };
 
-#ifdef COMPILE_DL_SOCKETFD
+#ifdef COMPILE_DL_SOCKETSFD
 ZEND_GET_MODULE(socketsfd)
 #endif

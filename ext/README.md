@@ -41,13 +41,13 @@ sudo make install
 `php.ini` または mods-available に以下を追加：
 
 ```
-extension=socketfd.so
+extension=socketsfd.so
 ```
 
 ### **5. 読み込み確認**
 
 ```
-php -m | grep socketfd
+php -m | grep socketsfd
 ```
 
 ---

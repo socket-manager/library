@@ -1,14 +1,14 @@
 #!/bin/sh
 
 # このスクリプトは ffi/linux/ 内で実行することを想定しています。
-# libio_core_linux-epoll.c をビルドし、プロジェクトの
+# libio_core_linux.c をビルドし、プロジェクトの
 # src/Framework/driver/libio_core_linux.so を上書きします。
 
 set -e
 
-SRC="libio_core_linux-epoll.c"
+SRC="libio_core_linux.c"
 OUT="libio_core_linux.so"
-TARGET="../../src/Framework/driver/${OUT}"
+TARGET="../../src/FrameWork/driver/${OUT}"
 
 echo "Building Linux FFI driver..."
 

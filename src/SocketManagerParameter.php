@@ -850,6 +850,25 @@ class SocketManagerParameter implements IUnitParameter
     }
 
     /**
+     * ソケットのアドレス情報を取得
+     * 
+     * @param string &$p_host ホストアドレス格納先
+     * @param int &$p_port ポート番号格納先
+     * @param ?string $p_cid 接続ID
+     * @return bool true（成功） or false（失敗）
+     */
+    final public function getSockName(string &$p_host, int &$p_port, ?string $p_cid = null): bool
+    {
+        $cid = $this->cid;
+        if($p_cid !== null)
+        {
+            $cid = $p_cid;
+        }
+
+        return $this->manager->getSockName($cid, $p_host, $p_port);
+    }
+
+    /**
      * IProtocolParameterインタフェースの取得
      * 
      * @return IProtocolParameter

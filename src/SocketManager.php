@@ -2435,6 +2435,19 @@ class SocketManager
     }
 
     /**
+     * ソケットのアドレス情報を取得
+     * 
+     * @param string $p_cid 接続ID
+     * @param string &$p_host ホストアドレス格納先
+     * @param int &$p_port ポート番号格納先
+     * @return bool true（成功） or false（失敗）
+     */
+    public function getSockName(string $p_cid, string &$p_host, int &$p_port): bool
+    {
+        return socket_getsockname($this->sockets[$p_cid], $p_host, $p_port);
+    }
+
+    /**
      * ソケットディスクリプタの生成
      * 
      * @param Socket $p_socket ソケットリソース

@@ -1384,7 +1384,7 @@ class SocketManager
         }
 
         // listen to port
-        $w_ret = socket_listen($soc);
+        $w_ret = socket_listen($soc, 8192);
         if($w_ret === false)
         {
             $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket($soc)]);

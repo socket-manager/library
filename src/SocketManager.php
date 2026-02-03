@@ -43,6 +43,12 @@ class SocketManager
      */
     private const SOCKET_ERROR_READ_RETRY = 11;
 
+    /**
+     * ソケット接続処理の継続
+     * （Operation now in progress）
+     */
+    private const SOCKET_ERROR_CONNECT_PROGRESS = 115;
+
 
     //--------------------------------------------------------------------------
     // 定数（その他）
@@ -1224,6 +1230,13 @@ class SocketManager
         }
         $soc = $w_ret;
 
+        // ノンブロッキングの設定
+        $w_ret = socket_set_nonblock($soc);
+        if($w_ret === false) {
+            $this->logWriter('error', [__METHOD__ => LogMessageEnum::NONBLOCK_SETTING_FAIL->message($this->lang)]);
+            return false;
+        }
+
         // connect to port
         $max = $p_retry;
         if($p_retry === 0)
@@ -1270,8 +1283,12 @@ class SocketManager
                     $w_ret = socket_connect($soc, $p_host, $p_port);
                     if($w_ret === false)
                     {
-                        $this->logWriter('error', [__METHOD__ => 'socket_connect', 'message' => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
-                        return false;
+                        $w_ret = LogMessageEnum::SOCKET_ERROR->array($soc);
+                        if($w_ret['code'] !== self::SOCKET_ERROR_CONNECT_PROGRESS && $w_ret['code'] !== self::SOCKET_ERROR_COULDNT_COMPLETED)
+                        {
+                            $this->logWriter('error', [__METHOD__ => 'socket_connect', 'message' => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
+                            return false;
+                        }
                     }
                     break;
                 }

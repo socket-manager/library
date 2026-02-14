@@ -3,6 +3,8 @@ PHP_ARG_ENABLE(socketsfd, whether to enable socketsfd,
 
 if test "$PHP_SOCKETSFD" != "no"; then
 
+  PHP_ADD_EXTENSION_DEP(socketsfd, sockets)
+
   dnl ---- Check if sockets extension header exists ----
   AC_MSG_CHECKING([for ext/sockets support])
   if test -f "`php-config --include-dir`/ext/sockets/php_sockets.h"; then

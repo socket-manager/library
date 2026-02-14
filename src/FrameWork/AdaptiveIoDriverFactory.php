@@ -17,7 +17,7 @@ use FFI;
  */
 class AdaptiveIoDriverFactory
 {
-    public static function create(array &$p_sockets): IIoDriver
+    public static function create(array &$p_sockets, array &$p_descriptors): IIoDriver
     {
         if(
             (filter_var(ini_get('ffi.enable'), FILTER_VALIDATE_BOOLEAN) || ini_get('ffi.enable') === 'preload')
@@ -30,20 +30,22 @@ class AdaptiveIoDriverFactory
             {
                 case 'Windows':
                     $header_os = <<<CDEF
-                        typedef unsigned int SOCKET;
-                        typedef short SHORT;
-
                         typedef struct {
-                            SOCKET fd;
-                            SHORT  events;
-                            SHORT  revents;
-                        } WSAPOLLFD;
+                            void* iocp;          // HANDLE → void*
 
-                        typedef struct {
-                            WSAPOLLFD *fds;
-                            int count;
-                            int capacity;
+                            void* fd_map;        // fd_map_entry** → void*
+                            int   fd_map_size;   // int
+                            void *fd_list_head;  // io_fd_entry* → void*
+
+                            void* listen_fds;    // SOCKET* → void*
+                            int   listen_count;
+                            int   listen_capacity;
+
+                            void* lpAcceptEx;
                         } io_context;
+
+                        // Windows 専用：listen ソケット登録
+                        int io_registerListen(io_context* ctx, int fd);
 CDEF;
                     $lib = __DIR__ . '/driver/io_core_win.dll';
                     break;
@@ -104,7 +106,7 @@ CDEF;
                 // return: 0 = success, 非0 = error code
                 int io_core_close(io_context *ctx);
 CDEF;
-            $driver = new NativeIoDriver(FFI::cdef($header, $lib));
+            $driver = new NativeIoDriver(FFI::cdef($header, $lib), $p_descriptors);
             printf("\033[1;32mBoot sequence finished — running in Adaptive IO-Driver Mode.\033[0m\n");
             return $driver;
         }

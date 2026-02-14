@@ -20,6 +20,8 @@ class NativeIoDriver implements IIoDriver
 {
     private FFI $ffi;
 
+    private array $descriptors; // ディスクリプタの配列（実体は上位のクラスに存在）
+
     /** @var FFI\CData $ctx */
     private $ctx;
 
@@ -30,10 +32,12 @@ class NativeIoDriver implements IIoDriver
      * コンストラクタ
      * 
      * @param FFI $p_ffi FFI インスタンス
+     * @param array &$p_descriptors ディスクリプタの参照渡し
      */
-    public function __construct(FFI $p_ffi)
+    public function __construct(FFI $p_ffi, array &$p_descriptors)
     {
-        $this->ffi    = $p_ffi;
+        $this->ffi         = $p_ffi;
+        $this->descriptors = $p_descriptors;
         $this->ctx    = $this->ffi->new("io_context");
         $this->events = $this->ffi->new("io_event_list");
         $ret = $this->ffi->io_core_init(FFI::addr($this->ctx));
@@ -54,6 +58,30 @@ class NativeIoDriver implements IIoDriver
     {
         $handle = socketsfd($p_sock);
         $this->ffi->io_register(FFI::addr($this->ctx), $handle);
+        return $handle;
+    }
+
+    /**
+     * ソケットハンドルを I/O ドライバへ登録依頼する（Listen用）
+     * 
+     * @param $p_sock ソケットリソース
+     * @return int ソケットハンドル
+     */
+    public function registerListen($p_sock): int
+    {
+        $handle = socketsfd($p_sock);
+
+        // Windows では io_registerListen が存在する
+        if(PHP_OS_FAMILY === 'Windows')
+        {
+            $this->ffi->io_registerListen(FFI::addr($this->ctx), $handle);
+        }
+        else
+        {
+            // Linux では listen も epoll に登録して問題ない
+            $this->ffi->io_register(FFI::addr($this->ctx), $handle);
+        }
+
         return $handle;
     }
 
@@ -90,7 +118,7 @@ class NativeIoDriver implements IIoDriver
     }
 
     /**
-     * C 側の io_event_list を PHP 配列へ変換する
+     * C 側の io_event_list 元にAccept処理を実行
      *
      * @param FFI\CData $p_events io_event_list*
      * @return array
@@ -105,24 +133,29 @@ class NativeIoDriver implements IIoDriver
 
             // event_type を文字列へ変換
             $type = null;
-            if( $ev->event_type === 1 )
+            if($ev->event_type === 1)
             {
                 $type = 'read';
             }
             else
-            if( $ev->event_type === 2 )
+            if($ev->event_type === 2)
             {
                 $type = 'write';
             }
             else
-            if( $ev->event_type === 3 )
+            if($ev->event_type === 3)
             {
                 $type = 'error';
             }
             else
-            if( $ev->event_type === 4 )
+            if($ev->event_type === 4)
             {
                 $type = 'disconnect';
+            }
+            else
+            if($ev->event_type === 5)   // IO_EVENT_ACCEPT
+            {
+                $type = 'accept';
             }
             else
             {

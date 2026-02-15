@@ -844,20 +844,24 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
             }
 
             ev->event_type = IO_EVENT_ACCEPT;
-            ev->handle = e->accept_sock[slot];
+            SOCKET accepted = e->accept_sock[slot];
+            ev->handle = accepted;
 
-            e->accept_sock[slot]    = INVALID_SOCKET;
-            e->pending_accept[slot] = 0;
-            ZeroMemory(&e->ov_accept[slot], sizeof(OVERLAPPED));
-
-            // 以後の read readiness 用に再度 0 バイト recv を投げておく
-            io_fd_entry *ce = io_create_entry(ctx, e->accept_sock[slot]);
+            // AcceptFD を IOCP に登録
+            io_fd_entry *ce = io_create_entry(ctx, accepted);
             if (ce) {
-                ce->fd        = s;
+                ce->fd        = accepted;
                 ce->active    = 1;
                 ce->is_listen = 0;
                 io_post_zero_recv(ctx, ce);
             }
+
+            // AcceptEx を再発行するためにスロットを空にする
+            e->accept_sock[slot] = INVALID_SOCKET;
+            e->pending_accept[slot] = 0;
+            ZeroMemory(&e->ov_accept[slot], sizeof(OVERLAPPED));
+
+            // 新しい AcceptFD を作って AcceptEx を再発行
             io_post_accept(ctx, e, slot);
 
             continue;

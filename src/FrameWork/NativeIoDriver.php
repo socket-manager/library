@@ -37,7 +37,7 @@ class NativeIoDriver implements IIoDriver
     public function __construct(FFI $p_ffi, array &$p_descriptors)
     {
         $this->ffi         = $p_ffi;
-        $this->descriptors = $p_descriptors;
+        $this->descriptors = &$p_descriptors;
         $this->ctx    = $this->ffi->new("io_context");
         $this->events = $this->ffi->new("io_event_list");
         $ret = $this->ffi->io_core_init(FFI::addr($this->ctx));
@@ -130,6 +130,7 @@ class NativeIoDriver implements IIoDriver
         for($i = 0; $i < $p_events->count; $i++)
         {
             $ev = $p_events->events[$i];
+            $cid = '#'.$ev->handle;
 
             // event_type を文字列へ変換
             $type = null;
@@ -163,7 +164,7 @@ class NativeIoDriver implements IIoDriver
             }
 
             $ret[] = [
-                'cid'        => '#'.$ev->handle,
+                'cid'        => $cid,
                 'sock'       => null,               // Native では不要。互換性のため残す
                 'type'       => $type,
                 'bytes'      => (int)$ev->bytes,

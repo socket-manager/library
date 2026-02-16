@@ -1537,10 +1537,25 @@ class SocketManager
             {
                 continue;
             }
+            else
             if($chg['type'] === 'disconnect')
             {
                 $this->shutdown($chg_cid);
                 continue;
+            }
+            else
+            if($chg['type'] === 'read')
+            {
+                if(PHP_OS_FAMILY === 'Linux')
+                {
+                    if(isset($this->descriptors[$chg_cid]))
+                    {
+                        if($this->descriptors[$chg_cid]['udp'] === false)
+                        {
+                            $this->descriptors[$chg_cid]['read_event'] = true;
+                        }
+                    }
+                }
             }
 
             $flg_accept = false;
@@ -1849,6 +1864,7 @@ class SocketManager
             $w_ret = @socket_read($soc, $siz);
             if($w_ret === false)
             {
+                $this->descriptors[$p_cid]['read_event'] = false;
                 $w_ret = LogMessageEnum::SOCKET_ERROR->array($soc);
                 if($w_ret['code'] === self::SOCKET_ERROR_READ_RETRY)
                 {
@@ -1884,6 +1900,18 @@ class SocketManager
             }
             $rcv = $w_ret;
             $rcv_siz = strlen($rcv);
+            if($w_ret === "")
+            {
+                if($this->descriptors[$p_cid]['read_event'] === true)
+                {
+                    throw new UnitException(
+                        UnitExceptionEnum::ECODE_EMERGENCY_SHUTDOWN->message($this->lang),
+                        UnitExceptionEnum::ECODE_EMERGENCY_SHUTDOWN->value,
+                        $this->unit_parameter
+                    );
+                }
+            }
+            $this->descriptors[$p_cid]['read_event'] = false;
         }
 
         // 最終アクセスタイムスタンプを設定
@@ -1981,6 +2009,7 @@ class SocketManager
             $w_ret = @socket_read($soc, $size);
             if($w_ret === false)
             {
+                $this->descriptors[$p_cid]['read_event'] = false;
                 $w_ret = LogMessageEnum::SOCKET_ERROR->array($soc);
                 if($w_ret['code'] === self::SOCKET_ERROR_READ_RETRY)
                 {
@@ -2020,6 +2049,18 @@ class SocketManager
                 $this->logWriter('notice', [__METHOD__ => $w_ret['message']]);
                 return false;
             }
+            if($w_ret === "")
+            {
+                if($this->descriptors[$p_cid]['read_event'] === true)
+                {
+                    throw new UnitException(
+                        UnitExceptionEnum::ECODE_EMERGENCY_SHUTDOWN->message($this->lang),
+                        UnitExceptionEnum::ECODE_EMERGENCY_SHUTDOWN->value,
+                        $this->unit_parameter
+                    );
+                }
+            }
+            $this->descriptors[$p_cid]['read_event'] = false;
 
             $p_recv = $w_ret;
         }
@@ -2557,6 +2598,9 @@ class SocketManager
 
         // UDPフラグ
         $this->descriptors[$cid]['udp'] = $p_udp;
+
+        // readイベントフラグ
+        $this->descriptors[$cid]['read_event'] = false;
 
         // UDPクライアントリスト
         $this->descriptors[$cid]['udp_peers'] = null;

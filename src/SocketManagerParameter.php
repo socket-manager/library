@@ -527,7 +527,7 @@ class SocketManagerParameter implements IUnitParameter
      */
     final public function aliveCheck(int $p_tout)
     {
-        $w_ret = $this->manager->aliveCheck($this->kind, $this->cid, $p_tout);
+        $w_ret = $this->manager->aliveCheck('protocol_names', $this->cid, $p_tout);
         if($w_ret === false)
         {
             throw new UnitException(
@@ -537,11 +537,14 @@ class SocketManagerParameter implements IUnitParameter
             );
         }
 
-        throw new UnitException(
-            UnitExceptionEnum::ECODE_THROW_BREAK->message(),
-            UnitExceptionEnum::ECODE_THROW_BREAK->value,
-            $this
-        );
+        if($this->kind === 'protocol_names')
+        {
+            throw new UnitException(
+                UnitExceptionEnum::ECODE_THROW_BREAK->message(),
+                UnitExceptionEnum::ECODE_THROW_BREAK->value,
+                $this
+            );
+        }
     }
 
     /**

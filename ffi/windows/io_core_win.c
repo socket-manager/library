@@ -655,6 +655,28 @@ int io_registerListen(io_context *ctx, int fd)
         }
     }
 
+    // ------------------------------------------------------------
+    // IOCP / AcceptEx ウォームアップ
+    // ------------------------------------------------------------
+    {
+        // ListenFD のローカルアドレスを取得
+        struct sockaddr_in addr;
+        int addrlen = sizeof(addr);
+        if (getsockname(s, (struct sockaddr *)&addr, &addrlen) == 0) {
+
+            // ダミー接続用ソケット
+            SOCKET warm = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
+            if (warm != INVALID_SOCKET) {
+
+                // ノンブロッキングにしない（同期 connect の方が確実）
+                connect(warm, (struct sockaddr *)&addr, sizeof(addr));
+
+                // 即 close（AcceptEx が完了し IOCP が初期化される）
+                closesocket(warm);
+            }
+        }
+    }
+
     return 0;
 }
 

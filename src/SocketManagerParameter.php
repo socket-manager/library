@@ -872,6 +872,28 @@ class SocketManagerParameter implements IUnitParameter
     }
 
     /**
+     * リモートアドレスの取得
+     * 
+     * @param ?string &$p_host リモートホスト
+     * @param ?int &$p_port リモートポート
+     */
+    final public function getRemoteAddr(?string &$p_host, ?int &$p_port)
+    {
+        $w_ret = $this->manager->getProperties($this->cid, ['remote']);
+        if($w_ret === false)
+        {
+            throw new UnitException(
+                UnitExceptionEnum::ECODE_PROPERTY_SET_FAIL->message(),
+                UnitExceptionEnum::ECODE_PROPERTY_SET_FAIL->value,
+                $this
+            );
+        }
+
+        $p_host = $w_ret['remote']['host'];
+        $p_port = $w_ret['remote']['port'];
+    }
+
+    /**
      * IProtocolParameterインタフェースの取得
      * 
      * @return IProtocolParameter

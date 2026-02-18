@@ -1321,6 +1321,7 @@ class SocketManager
             return false;
         }
         $des = $w_ret;
+        $this->setProperties($des['connection_id'], ['remote' => ['host' => $p_host, 'port' => $p_port]]);
 
         // キューの設定がない場合は抜ける
         $w_ret = $this->cycle_driven_for_protocol->isSetQueue(ProtocolQueueEnum::CONNECT->value, StatusEnum::START->value);
@@ -2595,6 +2596,12 @@ class SocketManager
 
         // 接続ID
         $this->descriptors[$cid]['connection_id'] = $cid;
+
+        // リモートアドレス
+        $this->descriptors[$cid]['remote'] = [
+            'host' => null,
+            'port' => null
+        ];
 
         // UDPフラグ
         $this->descriptors[$cid]['udp'] = $p_udp;

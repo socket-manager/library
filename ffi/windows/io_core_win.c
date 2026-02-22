@@ -834,7 +834,7 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
                 io_post_accept(ctx, e, slot);
             }
 
-            return events->count;
+            continue;
         }
 
         // 以降は成功イベントの処理

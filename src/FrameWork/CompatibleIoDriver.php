@@ -7,6 +7,8 @@
 
 namespace SocketManager\Library\FrameWork;
 
+use SocketManager\Library\SocketManager;
+
 
 /**
  * Compatible I/O Driver クラス
@@ -15,16 +17,20 @@ namespace SocketManager\Library\FrameWork;
  */
 class CompatibleIoDriver implements IIoDriver
 {
-    private array $sockets;                 // Socket リソースの配列（実体は上位のクラスに存在）
+    private array $sockets;         // Socket リソースの配列（実体は上位のクラスに存在）
+
+    private SocketManager $manager; // SocketManagerインスタンス
 
     /**
      * コンストラクタ
      * 
      * @param array &$p_sockets ソケットリソースの参照渡し
+     * @param SocketManager $p_manager SocketManagerインスタンス
      */
-    public function __construct(array &$p_sockets)
+    public function __construct(array &$p_sockets, SocketManager $p_manager)
     {
         $this->sockets = &$p_sockets;   // ラベルを渡してポインタ的に使う
+        $this->manager = $p_manager;
     }
 
     /**
@@ -95,11 +101,36 @@ class CompatibleIoDriver implements IIoDriver
                 }
             }
 
+            $type = 'read';
+            $data = '';
+            $bytes = 0;
+            $error = 0;
+            $len = $this->manager->ioRecv($cid, $data);
+            if($len === null)
+            {
+                // 互換モードではアクセプト時にnullが返される
+            }
+            else
+            if($len === false)
+            {
+                $type = 'error';
+            }
+            else
+            if($len === 0)
+            {
+                $type = 'disconnect';
+            }
+            else
+            {
+                $bytes = $len;
+            }
             $ret[] = [
-                'cid'  => $cid,
-                'sock' => $chg,
-                'type' => 'read',
-                'data' => null
+                'cid'        => $cid,
+                'sock'       => $chg,
+                'type'       => $type,
+                'bytes'      => $bytes,
+                'error_code' => $error,
+                'data'       => $data
             ];
         }
         return $ret;

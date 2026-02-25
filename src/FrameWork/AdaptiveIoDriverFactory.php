@@ -9,6 +9,8 @@ namespace SocketManager\Library\FrameWork;
 
 use FFI;
 
+use SocketManager\Library\SocketManager;
+
 
 /**
  * Adaptive I/O Driver ファクトリクラス
@@ -17,7 +19,24 @@ use FFI;
  */
 class AdaptiveIoDriverFactory
 {
-    public static function create(array &$p_sockets, array &$p_descriptors): IIoDriver
+    // 動作モード定義
+    public const MODE_IO_NATIVE = 0x01;
+    public const MODE_IO_COMPATIBLE = 0x02;
+
+    /**
+     * @var ?int 動作モード
+     */
+    public static ?int $mode = null;
+
+    /**
+     * ドライバI/Fの取得
+     * 
+     * @param array &$p_sockets ソケットリソースリスト
+     * @param SocketManager $p_manager SocketManagerインスタンス
+     * @param int $p_recv_buf_size 受信バッファサイズ
+     * @return IIoDriver ドライバI/F
+     */
+    public static function create(array &$p_sockets, SocketManager $p_manager, int $p_recv_buf_size): IIoDriver
     {
         if(
             (filter_var(ini_get('ffi.enable'), FILTER_VALIDATE_BOOLEAN) || ini_get('ffi.enable') === 'preload')
@@ -26,6 +45,7 @@ class AdaptiveIoDriverFactory
             ||  (PHP_OS_FAMILY === 'Linux' && file_exists(__DIR__.'/driver/libio_core_linux.so'))
             )
         ){
+            self::$mode = self::MODE_IO_NATIVE; // モード設定
             switch(PHP_OS_FAMILY)
             {
                 case 'Windows':
@@ -42,6 +62,8 @@ class AdaptiveIoDriverFactory
                             int   listen_capacity;
 
                             void* lpAcceptEx;
+
+                            unsigned long long recv_buf_size;
                         } io_context;
 
                         // Windows 専用：listen ソケット登録
@@ -80,7 +102,7 @@ CDEF;
                 // 初期化処理
                 // ctx: IO ドライバのコンテキスト
                 // return: 0 = success, 非0 = error code
-                int io_core_init(io_context* ctx);
+                int io_core_init(io_context* ctx, unsigned long long recv_buf_size);
 
                 // ソケットハンドルを IO ドライバへ登録
                 // ctx: IO ドライバのコンテキスト
@@ -106,10 +128,11 @@ CDEF;
                 // return: 0 = success, 非0 = error code
                 int io_core_close(io_context *ctx);
 CDEF;
-            $driver = new NativeIoDriver(FFI::cdef($header, $lib), $p_descriptors);
+            $driver = new NativeIoDriver(FFI::cdef($header, $lib), $p_manager, $p_recv_buf_size);
             printf("\033[1;32mBoot sequence finished — running in Adaptive IO-Driver Mode.\033[0m\n");
             return $driver;
         }
-        return new CompatibleIoDriver($p_sockets);
+        self::$mode = self::MODE_IO_COMPATIBLE; // モード設定
+        return new CompatibleIoDriver($p_sockets, $p_manager);
     }
 }

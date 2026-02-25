@@ -46,7 +46,7 @@ class SocketManagerParameter implements IUnitParameter
      * プロトコルUNITパラメータ
      * 
      */
-    private ?ProtocolParameter $protocol = null;
+    private ProtocolParameter|BufferingProtocol|null $protocol = null;
 
     /**
      * シンプルソケットインスタンス
@@ -71,9 +71,6 @@ class SocketManagerParameter implements IUnitParameter
         {
             $this->lang = $p_lang;
         }
-
-        // プロトコルUNITパラメータクラスのインスタンスを設定
-        $this->protocol = new ProtocolParameter();
     }
 
 
@@ -891,6 +888,16 @@ class SocketManagerParameter implements IUnitParameter
 
         $p_host = $w_ret['remote']['host'];
         $p_port = $w_ret['remote']['port'];
+    }
+
+    /**
+     * プロトコルインターフェースの設定
+     * 
+     * @param IProtocolParameter $p_protocol プロトコルインターフェース
+     */
+    final public function setProtocolInterface(IProtocolParameter $p_protocol)
+    {
+        $this->protocol = $p_protocol;
     }
 
     /**

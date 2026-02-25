@@ -41,7 +41,10 @@ typedef struct io_fd_entry {
 
     int        is_listen;
 
-    // ★ listen ソケット専用：複数 AcceptEx スロット
+    // 受信バッファ
+    char      *recv_buf;
+
+    // listen ソケット専用：複数 AcceptEx スロット
     OVERLAPPED ov_accept[ACCEPT_EX_PREPOST];
     OVERLAPPED ov_accept_recv[ACCEPT_EX_PREPOST];
     SOCKET     accept_sock[ACCEPT_EX_PREPOST];
@@ -85,6 +88,9 @@ typedef struct {
 
     // AcceptEx 関数ポインタ
     LPFN_ACCEPTEX  lpAcceptEx;
+
+    // 受信バッファサイズ
+    size_t         recv_buf_size;
 } io_context;
 
 /* 現在のチックカウントを取得 */
@@ -166,6 +172,13 @@ static io_fd_entry *io_create_entry(io_context *ctx, SOCKET fd)
     fd_map_entry *node = (fd_map_entry *)malloc(sizeof(fd_map_entry));
     if (node == NULL) {
         free(e);
+        return NULL;
+    }
+
+    e->recv_buf = malloc(ctx->recv_buf_size);
+    if (e->recv_buf == NULL) {
+        free(e);
+        free(node);
         return NULL;
     }
 
@@ -321,6 +334,9 @@ void io_detach_entry(io_context *ctx, SOCKET fd)
     io_remove_from_fd_list(ctx, e);
 
     // メモリ解放
+    if (e->recv_buf) {
+        free(e->recv_buf);
+    }
     free(e);
 }
 
@@ -454,17 +470,41 @@ static int io_post_accept(io_context *ctx, io_fd_entry *e, int slot)
     return 0;
 }
 
+/* 「N バイト WSARecv」を発行 */
+static int io_post_recv(io_context *ctx, io_fd_entry *e)
+{
+    ZeroMemory(&e->ov_read, sizeof(OVERLAPPED));
+
+    DWORD flags = 0;
+    DWORD bytes = 0;
+
+    WSABUF buf;
+    buf.buf = e->recv_buf;
+    buf.len = (ULONG)ctx->recv_buf_size;
+
+    int r = WSARecv(e->fd, &buf, 1, &bytes, &flags, &e->ov_read, NULL);
+    if (r == SOCKET_ERROR) {
+        int err = WSAGetLastError();
+        if (err != WSA_IO_PENDING) {
+            e->active = 0;
+            return -1;
+        }
+    }
+    return 0;
+}
+
 /**
  * 初期化処理
  *
  * ctx: io_context* IOCP コンテキスト
+ * recv_buf_size: 受信バッファサイズ
  *
  * return:
  *   = 0 : 正常
  *   < 0 : エラー
  */
 __declspec(dllexport)
-int io_core_init(io_context *ctx)
+int io_core_init(io_context *ctx, size_t recv_buf_size)
 {
     WSADATA wsa;
 
@@ -482,6 +522,7 @@ int io_core_init(io_context *ctx)
         return -1;
     }
 
+    ctx->recv_buf_size = recv_buf_size;
     ctx->lpAcceptEx = NULL;
     ctx->fd_list_head = NULL;
 
@@ -558,9 +599,8 @@ int io_register(io_context *ctx, int fd)
     e->active         = 1;
     e->is_listen      = 0;
 
-    /* read readiness 相当の監視を開始（0 バイト WSARecv） */
-    if (io_post_zero_recv(ctx, e) < 0) {
-        /* ここでもソケットは閉じない。PHP 側が管理。 */
+    // N バイト WSARecv
+    if (io_post_recv(ctx, e) < 0) {
         return -1;
     }
 
@@ -735,7 +775,7 @@ int io_unregister(io_context *ctx, int fd)
 }
 
 /**
- * イベント待機（AcceptEx + 0バイトWSARecv）
+ * イベント待機（AcceptEx + NバイトWSARecv）
  *
  * ctx: io_context* IOCP コンテキスト
  * timeout_ms: タイムアウト（ミリ秒）
@@ -875,7 +915,7 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
                 ce->fd        = accepted;
                 ce->active    = 1;
                 ce->is_listen = 0;
-                io_post_zero_recv(ctx, ce);
+                io_post_recv(ctx, ce);
             }
 
             // AcceptEx を再発行するためにスロットを空にする
@@ -889,14 +929,27 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
             continue;
         }
 
-        /* listen ソケットの 0 バイト recv 完了かどうかを判定 */
+        /* listen ソケットの N バイト recv 完了かどうかを判定 */
         if (ov == &e->ov_read) {
-            // 通常の read readiness
-            ev->event_type = IO_EVENT_READ;
 
-            if (e->active) {
-                io_post_zero_recv(ctx, e);
+            if (bytes == 0) {
+                // FIN 受信（正常切断）
+                ev->event_type = IO_EVENT_DISCONNECT;
+                e->active = 0;
+                continue;
             }
+
+            // 通常のデータ受信
+            ev->event_type = IO_EVENT_READ;
+            ev->bytes = bytes;
+            ev->user_data = e->recv_buf;
+
+            // 次の recv を発行
+            if (e->active) {
+                io_post_recv(ctx, e);
+            }
+
+            continue;
         } else {
             ev->event_type = IO_EVENT_ERROR;
             ev->error_code = -1;

@@ -10,6 +10,8 @@ namespace SocketManager\Library\FrameWork;
 use FFI;
 use RuntimeException;
 
+use SocketManager\Library\SocketManager;
+
 
 /**
  * Native I/O Driver クラス
@@ -20,7 +22,7 @@ class NativeIoDriver implements IIoDriver
 {
     private FFI $ffi;
 
-    private array $descriptors; // ディスクリプタの配列（実体は上位のクラスに存在）
+    private SocketManager $manager; // SocketManagerインスタンス
 
     /** @var FFI\CData $ctx */
     private $ctx;
@@ -32,15 +34,16 @@ class NativeIoDriver implements IIoDriver
      * コンストラクタ
      * 
      * @param FFI $p_ffi FFI インスタンス
-     * @param array &$p_descriptors ディスクリプタの参照渡し
+     * @param SocketManager $p_manager SocketManagerインスタンス
+     * @param int $p_recv_buf_size 受信バッファサイズ
      */
-    public function __construct(FFI $p_ffi, array &$p_descriptors)
+    public function __construct(FFI $p_ffi, SocketManager $p_manager, int $p_recv_buf_size)
     {
-        $this->ffi         = $p_ffi;
-        $this->descriptors = &$p_descriptors;
+        $this->ffi     = $p_ffi;
+        $this->manager = $p_manager;
         $this->ctx    = $this->ffi->new("io_context");
         $this->events = $this->ffi->new("io_event_list");
-        $ret = $this->ffi->io_core_init(FFI::addr($this->ctx));
+        $ret = $this->ffi->io_core_init(FFI::addr($this->ctx), $p_recv_buf_size);
         if($ret !== 0)
         {
             // ここは既存のエラーハンドリング方針に合わせて例外 or ログなど
@@ -134,9 +137,38 @@ class NativeIoDriver implements IIoDriver
 
             // event_type を文字列へ変換
             $type = null;
+            $data = '';
+            $bytes = 0;
             if($ev->event_type === 1)
             {
                 $type = 'read';
+                if((int)$ev->bytes > 0)
+                {
+                    $bytes = (int)$ev->bytes;
+                    $data = FFI::string($ev->user_data, (int)$ev->bytes);
+                }
+                else
+                {
+                    $len = $this->manager->ioRecv($cid, $data);
+                    if($len === null)
+                    {
+                        continue;
+                    }
+                    else
+                    if($len === false)
+                    {
+                        // ネイティブモードではアクセプト時にfalseが返される
+                    }
+                    else
+                    if($len === 0)
+                    {
+                        $type = 'disconnect';
+                    }
+                    else
+                    {
+                        $bytes = $len;
+                    }
+                }
             }
             else
             if($ev->event_type === 2)
@@ -167,9 +199,9 @@ class NativeIoDriver implements IIoDriver
                 'cid'        => $cid,
                 'sock'       => null,               // Native では不要。互換性のため残す
                 'type'       => $type,
-                'bytes'      => (int)$ev->bytes,
+                'bytes'      => $bytes,
                 'error_code' => (int)$ev->error_code,
-                'data'       => null                // 今回は未使用。将来の拡張用
+                'data'       => $data
             ];
         }
 

@@ -339,10 +339,6 @@ class SocketManager
         }
         $this->lang = $w_ret;
 
-        // UNITパラメータの設定
-        $this->unit_parameter = new SocketManagerParameter($this->lang);
-        $this->unit_parameter->setSocketManager($this);
-
         // 周期ドリブンマネージャーの設定
         $this->cycle_driven_for_protocol = new CycleDrivenManager();
         $this->cycle_driven_for_command = new CycleDrivenManager();
@@ -361,7 +357,23 @@ class SocketManager
         // I/O ドライバの初期化
         //--------------------------------------------------------------------------
 
-        $this->iio_driver = AdaptiveIoDriverFactory::create($this->sockets, $this->descriptors);
+        $this->iio_driver = AdaptiveIoDriverFactory::create($this->sockets, $this, $this->receive_buffer_size);
+        $protocol = null;
+        if(AdaptiveIoDriverFactory::$mode === AdaptiveIoDriverFactory::MODE_IO_NATIVE)
+        {
+            $protocol = new BufferingProtocol();
+        }
+        else
+        {
+            $protocol = new BufferingProtocol();
+        }
+
+        // UNITパラメータの設定
+        $this->unit_parameter = new SocketManagerParameter($this->lang);
+        $this->unit_parameter->setProtocolInterface($protocol);
+        $this->unit_parameter->setSocketManager($this);
+        $this->unit_parameter->setLanguage($this->lang);
+
         return;
     }
 
@@ -412,6 +424,16 @@ class SocketManager
         if($w_ret !== null)
         {
             $this->unit_parameter = $w_ret;
+            $protocol = null;
+            if(AdaptiveIoDriverFactory::$mode === AdaptiveIoDriverFactory::MODE_IO_NATIVE)
+            {
+                $protocol = new BufferingProtocol();
+            }
+            else
+            {
+                $protocol = new BufferingProtocol();
+            }
+            $this->unit_parameter->setProtocolInterface($protocol);
             $this->unit_parameter->setSocketManager($this);
             $this->unit_parameter->setLanguage($this->lang);
         }
@@ -1235,13 +1257,6 @@ class SocketManager
         }
         $soc = $w_ret;
 
-        // ノンブロッキングの設定
-        $w_ret = socket_set_nonblock($soc);
-        if($w_ret === false) {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::NONBLOCK_SETTING_FAIL->message($this->lang)]);
-            return false;
-        }
-
         // connect to port
         $max = $p_retry;
         if($p_retry === 0)
@@ -1283,6 +1298,13 @@ class SocketManager
             }
             else
             {
+                // ノンブロッキングの設定
+                $w_ret = socket_set_nonblock($soc);
+                if($w_ret === false) {
+                    $this->logWriter('error', [__METHOD__ => LogMessageEnum::NONBLOCK_SETTING_FAIL->message($this->lang)]);
+                    return false;
+                }
+
                 try
                 {
                     $w_ret = socket_connect($soc, $p_host, $p_port);
@@ -1536,6 +1558,7 @@ class SocketManager
             $chg_cid = $chg['cid'];
             if($chg['type'] === 'error')
             {
+                $this->shutdown($chg_cid);
                 continue;
             }
             else
@@ -1547,16 +1570,10 @@ class SocketManager
             else
             if($chg['type'] === 'read')
             {
-                if(PHP_OS_FAMILY === 'Linux')
-                {
-                    if(isset($this->descriptors[$chg_cid]))
-                    {
-                        if($this->descriptors[$chg_cid]['udp'] === false)
-                        {
-                            $this->descriptors[$chg_cid]['read_event'] = true;
-                        }
-                    }
-                }
+                $data = substr($chg['data'], 0, $chg['bytes']);
+                $this->descriptors[$chg_cid]['receiving_buffer']['data'] .= $data;
+                $this->descriptors[$chg_cid]['receiving_buffer']['receiving_size'] += $chg['bytes'];
+                $this->descriptors[$chg_cid]['last_access_timestamp'] = time();
             }
 
             $flg_accept = false;
@@ -1935,10 +1952,86 @@ class SocketManager
         // 受信データを設定
         $ret = $this->descriptors[$p_cid]['receiving_buffer']['data'] . $rcv;
 
-        // 送信バッファを初期化
+        // 受信バッファを初期化
         $this->descriptors[$p_cid]['receiving_buffer']['size'] = null;
         $this->descriptors[$p_cid]['receiving_buffer']['data'] = null;
         $this->descriptors[$p_cid]['receiving_buffer']['receiving_size'] = 0;
+
+        return $ret;
+    }
+
+    /**
+     * データ受信サイズの設定（バッファリング用）
+     * 
+     * ※プロトコルUNITで使用 
+     * 
+     * @param string $p_cid 接続ID
+     * @param int $p_size 受信サイズ
+     * @return bool true（成功） or false(失敗)
+     */
+    public function setBufferingReceivingSize(string $p_cid, int $p_size): bool
+    {
+        // ディスクリプタが存在しなければ抜ける
+        if(!isset($this->descriptors[$p_cid]))
+        {
+            return false;
+        }
+
+        // 受信バッファへ設定
+        $this->descriptors[$p_cid]['receiving_buffer']['size'] = $p_size;
+
+        return true;
+    }
+
+    /**
+     * データ受信（バッファリング用）
+     * 
+     * setReceivingSizeで設定されたサイズ分を受信するまで続ける
+     * 
+     * ※プロトコルUNITで使用  
+     * ※最終アクセスタイムスタンプの設定はNativeIoDriverで行う
+     * 
+     * @param string $p_cid 接続ID
+     * @return mixed 受信データ or null（受信中） or false（失敗）
+     */
+    public function bufferingRreceiving(string $p_cid)
+    {
+        // ディスクリプタが存在しなければ抜ける
+        if(!isset($this->descriptors[$p_cid]))
+        {
+            return false;
+        }
+
+        // データ受信サイズ設定がされていない場合は抜ける
+        if
+        (
+                $this->descriptors[$p_cid]['receiving_buffer']['size'] === null
+        )
+        {
+            $this->logWriter('error', [__METHOD__ => LogMessageEnum::RECEIVE_SIZE_NO_SETTING->message($this->lang)]);
+            return false;
+        }
+
+        // 設定サイズの取得
+        $setting_siz = $this->descriptors[$p_cid]['receiving_buffer']['size'];
+
+        // 受信中サイズの取得
+        $receiving_siz = $this->descriptors[$p_cid]['receiving_buffer']['receiving_size'];
+
+        // 設定サイズ未満の場合は抜ける
+        if($receiving_siz < $setting_siz)
+        {
+            return null;
+        }
+
+        // 受信データを設定
+        $ret = substr($this->descriptors[$p_cid]['receiving_buffer']['data'], 0, $setting_siz);
+
+
+        // 受信バッファをリセット
+        $this->descriptors[$p_cid]['receiving_buffer']['size'] = null;
+        $this->descriptors[$p_cid]['receiving_buffer']['data'] = substr($this->descriptors[$p_cid]['receiving_buffer']['data'], $setting_siz);
+        $this->descriptors[$p_cid]['receiving_buffer']['receiving_size'] -= $setting_siz;
 
         return $ret;
     }
@@ -1956,12 +2049,174 @@ class SocketManager
         $dat = $this->descriptors[$p_cid]['receiving_buffer']['data'];
 
         // 受信バッファが未設定か
-        if($siz === null && $dat === null)
+        if($siz === null)
         {
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * データ受信（バッファリング用）
+     * 
+     * 受信バッファサイズ分を受信する
+     * 
+     * ※プロトコルUNITで使用 
+     * ※最終アクセスタイムスタンプの設定はNativeIoDriverで行う
+     * 
+     * @param string $p_cid 接続ID
+     * @param mixed &$p_recv 受信エリア
+     * @param ?int $p_size 受信サイズ（指定があればデフォルトサイズより優先される）
+     * @return int 受信したサイズ or false（失敗） or null（取得できるデータがない）
+     */
+    public function bufferingRecv(string $p_cid, &$p_recv, ?int $p_size = null)
+    {
+        // ディスクリプタが存在しなければ抜ける
+        if(!isset($this->descriptors[$p_cid]))
+        {
+            return false;
+        }
+
+        // 受信データがなければ抜ける
+        $receiving_siz = $this->descriptors[$p_cid]['receiving_buffer']['receiving_size'];
+        if($receiving_siz <= 0)
+        {
+            return null;
+        }
+
+        // 受信サイズ決定
+        $size = $this->receive_buffer_size;
+        if($p_size !== null)
+        {
+            $size = $p_size;
+        }
+
+        $siz = min($size, $receiving_siz);
+
+        // 受信データを設定
+        $p_recv = substr($this->descriptors[$p_cid]['receiving_buffer']['data'], 0, $siz);
+
+        // 受信バッファをリセット
+        $this->descriptors[$p_cid]['receiving_buffer']['size'] = null;
+        $this->descriptors[$p_cid]['receiving_buffer']['data'] = substr($this->descriptors[$p_cid]['receiving_buffer']['data'], $siz);
+        $this->descriptors[$p_cid]['receiving_buffer']['receiving_size'] -= $siz;
+
+        return $siz;
+    }
+
+    /**
+     * データ受信（IOドライバ用）
+     * 
+     * 受信バッファサイズ分を受信する
+     * 
+     * ※プロトコルUNITで使用 
+     * 
+     * @param string $p_cid 接続ID
+     * @param mixed &$p_recv 受信エリア
+     * @param ?int $p_size 受信サイズ（指定があればデフォルトサイズより優先される）
+     * @return int 受信したサイズ or false（失敗） or null（取得できるデータがない）
+     */
+    public function ioRecv(string $p_cid, &$p_recv, ?int $p_size = null)
+    {
+        // 受信サイズ決定
+        $size = $this->receive_buffer_size;
+        if($p_size !== null)
+        {
+            $size = $p_size;
+        }
+
+        // ソケットリソースの取得
+        $soc = $this->sockets[$p_cid];
+
+        // データ受信
+        $p_recv = '';
+        $prop = $this->getProperties($p_cid, ['udp']);
+        if($prop['udp'] === true)
+        {
+            $prop = $this->getProperties($p_cid, ['udp_peers']);
+            if($prop !== null)
+            {
+                $buf = '';
+                $from = '';
+                $port = 0;
+                $w_ret = @socket_recvfrom($soc, $buf, $size, 0, $from, $port);
+                if($w_ret === false)
+                {
+                    $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
+                    return false;
+                }
+
+                $p_recv = $buf;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        else
+        {
+            $w_ret = @socket_read($soc, $size);
+            if($w_ret === false)
+            {
+                $this->descriptors[$p_cid]['read_event'] = false;
+                $w_ret = LogMessageEnum::SOCKET_ERROR->array($soc);
+                if($w_ret['code'] === self::SOCKET_ERROR_READ_RETRY)
+                {
+                    return null;
+                }
+
+                // ソケット操作を完了できなかった
+                if($w_ret['code'] === self::SOCKET_ERROR_COULDNT_COMPLETED)
+                {
+                    return null;
+                }
+
+                // 接続中の送受信
+                if($w_ret['code'] === self::SOCKET_ERROR_SENDING_WHILE_CONNECTED)
+                {
+                    return null;
+                }
+
+                // 相手からの切断を判定
+                $shutdown = false;
+                foreach(self::SOCKET_ERROR_PEER_SHUTDOWN as $cod)
+                {
+                    if($w_ret['code'] === $cod)
+                    {
+                        $shutdown = true;
+                    }
+                }
+                if($shutdown === true)
+                {
+                    // 緊急停止時コールバックを実行
+                    $callback = $this->emergency_callback;
+                    if($callback !== null)
+                    {
+                        $callback($this->unit_parameter);
+                    }
+                    return 0;
+                }
+                $this->logWriter('notice', [__METHOD__ => $w_ret['message']]);
+                return false;
+            }
+            if($w_ret === "")
+            {
+                // 緊急停止時コールバックを実行
+                $callback = $this->emergency_callback;
+                if($callback !== null)
+                {
+                    $callback($this->unit_parameter);
+                }
+                return 0;
+            }
+
+            $p_recv = $w_ret;
+        }
+
+        $len = strlen($p_recv);
+        
+        return $len;
     }
 
     /**

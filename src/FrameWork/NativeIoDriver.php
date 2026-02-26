@@ -55,12 +55,13 @@ class NativeIoDriver implements IIoDriver
      * ソケットハンドルを I/O ドライバへ登録依頼する
      * 
      * @param $p_sock ソケットリソース
+     * @param bool $p_is_udp UDPフラグ
      * @return int ソケットハンドル
      */
-    public function register($p_sock): int
+    public function register($p_sock, bool $p_is_udp): int
     {
         $handle = socketsfd($p_sock);
-        $this->ffi->io_register(FFI::addr($this->ctx), $handle);
+        $this->ffi->io_register(FFI::addr($this->ctx), $handle, $p_is_udp);
         return $handle;
     }
 
@@ -82,8 +83,23 @@ class NativeIoDriver implements IIoDriver
         else
         {
             // Linux では listen も epoll に登録して問題ない
-            $this->ffi->io_register(FFI::addr($this->ctx), $handle);
+            $this->ffi->io_register(FFI::addr($this->ctx), $handle, false);
         }
+
+        return $handle;
+    }
+
+    /**
+     * ソケットハンドルを I/O ドライバへ登録依頼する（UDP待ち受け用）
+     * 
+     * @param $p_sock ソケットリソース
+     * @return int ソケットハンドル
+     */
+    public function registerUdpListen($p_sock): int
+    {
+        $handle = socketsfd($p_sock);
+
+        $this->ffi->io_registerUdpListen(FFI::addr($this->ctx), $handle);
 
         return $handle;
     }

@@ -43,8 +43,10 @@ static int set_nonblock(int fd) {
 /**
  * 初期化
  */
-int io_core_init(io_context *ctx)
+int io_core_init(io_context *ctx, size_t recv_buf_size)
 {
+    (void)recv_buf_size;
+
     if(!ctx) return -1;
 
     ctx->epfd = epoll_create1(EPOLL_CLOEXEC);
@@ -60,8 +62,10 @@ int io_core_init(io_context *ctx)
 /**
  * 登録
  */
-int io_register(io_context *ctx, int fd)
+int io_register(io_context *ctx, int fd, int is_udp)
 {
+    (void)is_udp;
+
     if(!ctx) return -1;
 
     // 既に登録済みかチェック

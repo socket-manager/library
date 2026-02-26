@@ -101,14 +101,16 @@ CDEF;
 
                 // 初期化処理
                 // ctx: IO ドライバのコンテキスト
+                // recv_buf_size: 受信バッファサイズ
                 // return: 0 = success, 非0 = error code
                 int io_core_init(io_context* ctx, unsigned long long recv_buf_size);
 
                 // ソケットハンドルを IO ドライバへ登録
                 // ctx: IO ドライバのコンテキスト
                 // fd: OS のソケットハンドル（Windows=SOCKET, Linux=fd）
+                // is_udp: UDPフラグ（1:udp、0:tcp）
                 // return: 0 = success, 非0 = error code
-                int io_register(io_context* ctx, int fd);
+                int io_register(io_context* ctx, int fd, int is_udp);
 
                 // ソケットハンドルを IO ドライバから解除
                 // ctx: IO ドライバのコンテキスト

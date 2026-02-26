@@ -40,6 +40,7 @@ typedef struct io_fd_entry {
     int        active;
 
     int        is_listen;
+    int        is_udp;      // UDPフラグ
 
     // 受信バッファ
     char      *recv_buf;
@@ -345,11 +346,6 @@ static int io_post_zero_recv(io_context *ctx, io_fd_entry *e)
 {
     (void)ctx; // 現状 ctx は未使用
 
-    // listen ソケットには 0 バイト WSARecv を投げない
-    if (e->is_listen) {
-        return 0;
-    }
-
     ZeroMemory(&e->ov_read, sizeof(OVERLAPPED));
 
     DWORD flags = 0;
@@ -358,6 +354,14 @@ static int io_post_zero_recv(io_context *ctx, io_fd_entry *e)
     /* 0 バイト読み込み用のダミー */
     buf.buf = NULL;
     buf.len = 0;
+
+    if (e->is_udp && e->is_listen) {
+        // UDP ハンドシェイク用ポート
+        flags = MSG_PEEK;
+    } else if (!e->is_udp && e->is_listen) {
+        // TCP listen socket → 0 バイト recv は禁止
+        return 0;
+    }
 
     int r = WSARecv(e->fd, &buf, 1, NULL, &flags, &e->ov_read, NULL);
     if (r == SOCKET_ERROR) {
@@ -563,7 +567,7 @@ int io_core_init(io_context *ctx, size_t recv_buf_size)
  *   < 0 : エラー
  */
 __declspec(dllexport)
-int io_register(io_context *ctx, int fd)
+int io_register(io_context *ctx, int fd, int is_udp)
 {
     if (ctx == NULL) {
         return -1;
@@ -598,6 +602,7 @@ int io_register(io_context *ctx, int fd)
     e->fd             = s;
     e->active         = 1;
     e->is_listen      = 0;
+    e->is_udp         = is_udp;
 
     // N バイト WSARecv
     if (io_post_recv(ctx, e) < 0) {
@@ -683,6 +688,7 @@ int io_registerListen(io_context *ctx, int fd)
     e->fd        = s;
     e->active    = 1;
     e->is_listen = 1;
+    e->is_udp    = 0;
 
     // AcceptEx を複数本先行発行
     for (int i = 0; i < ACCEPT_EX_PREPOST; i++) {
@@ -712,6 +718,81 @@ int io_registerListen(io_context *ctx, int fd)
                 connect(warm, (struct sockaddr *)&addr, sizeof(addr));
 
                 // 即 close（AcceptEx が完了し IOCP が初期化される）
+                closesocket(warm);
+            }
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * ソケットハンドルを UDP待ち受け用IO ドライバへ登録
+ *
+ * ctx: io_context* IOCP コンテキスト
+ * fd : ソケットハンドル
+ *
+ * return:
+ *   = 0 : 正常
+ *   < 0 : エラー
+ */
+__declspec(dllexport)
+int io_registerUdpListen(io_context *ctx, int fd)
+{
+    if (ctx == NULL) {
+        return -1;
+    }
+
+    SOCKET s = (SOCKET)fd;
+
+    io_lookup_result r = io_get_entry(ctx, s);
+    io_fd_entry *e = r.entry;
+
+    if (e == NULL) {
+        e = io_create_entry(ctx, s);
+        if (e == NULL) {
+            return -1;
+        }
+    }
+
+    // 既に UDP Listen として登録済みなら何もしない
+    if (e->active && e->is_listen && e->is_udp) {
+        return 0;
+    }
+
+    // IOCP に関連付け
+    if (CreateIoCompletionPort((HANDLE)s, ctx->iocp, (ULONG_PTR)s, 0) == NULL) {
+        return -1;
+    }
+
+    e->fd        = s;
+    e->active    = 1;
+    e->is_listen = 1;   // UDP ハンドシェイク用ポート
+    e->is_udp    = 1;
+
+    // 0 バイト recv(MSG_PEEK) を発行
+    if (io_post_zero_recv(ctx, e) < 0) {
+        return -1;
+    }
+
+    // ------------------------------------------------------------
+    // UDP IOCP ウォームアップ
+    // ------------------------------------------------------------
+    {
+        struct sockaddr_in addr;
+        int addrlen = sizeof(addr);
+
+        if (getsockname(s, (struct sockaddr *)&addr, &addrlen) == 0) {
+
+            // 自分自身へ空パケットを送る
+            SOCKET warm = WSASocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, 0);
+            if (warm != INVALID_SOCKET) {
+
+                // ノンブロッキングにしない（同期 sendto の方が確実）
+                char dummy = 0;
+                sendto(warm, &dummy, 1, 0,
+                       (struct sockaddr *)&addr, sizeof(addr));
+
                 closesocket(warm);
             }
         }
@@ -855,32 +936,68 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
                 continue;
             }
 
-            if (err == ERROR_NETNAME_DELETED || err == WSAECONNRESET) {
-                // 相手側が切断した（RST/FIN 相当）
-                ev->event_type = IO_EVENT_DISCONNECT;
-                e->active      = 0;     // もう 0 バイト recv は投げない
-            } else {
-                ev->event_type = IO_EVENT_ERROR;
-            }
-
-            // エラーイベント
-            ev->error_code = (int)err;
-
-            /* listen ソケットの AcceptEx 完了かどうかを判定 */
-            if (e->is_listen == 1) {
-                // 次の AcceptEx を仕込む
+            // UDP の場合は AcceptEx が無いので TCP のみ処理
+            if (!e->is_udp && e->is_listen && slot >= 0) {
                 e->accept_sock[slot]    = INVALID_SOCKET;
                 e->pending_accept[slot] = 0;
                 io_post_accept(ctx, e, slot);
             }
 
+            if (err == ERROR_NETNAME_DELETED || err == WSAECONNRESET) {
+                // 相手側が切断した（RST/FIN 相当）
+                ev->event_type = IO_EVENT_DISCONNECT;
+            } else {
+                ev->event_type = IO_EVENT_ERROR;
+            }
+
+            ev->error_code = (int)err;
+            e->active      = 0;     // もう 0 バイト recv は投げない
             continue;
         }
 
         // 以降は成功イベントの処理
 
+        // -----------------------------
+        // UDP ListenFD（ハンドシェイク用）
+        // -----------------------------
+        if (e->is_udp && e->is_listen && ov == &e->ov_read) {
+
+            ev->event_type = IO_EVENT_READ;  // 空パケット到着通知
+            ev->bytes      = 0;
+            ev->user_data  = NULL;
+
+            // 再度 0 バイト recv(MSG_PEEK)
+            if (e->active) {
+                io_post_zero_recv(ctx, e);
+            }
+
+            continue;
+        }
+
+        // -----------------------------
+        // UDP 通常 FD（N バイト recv）
+        // -----------------------------
+        if (e->is_udp && !e->is_listen && ov == &e->ov_read) {
+
+            if (bytes == 0) {
+                ev->event_type = IO_EVENT_DISCONNECT;
+                e->active = 0;
+                continue;
+            }
+
+            ev->event_type = IO_EVENT_READ;
+            ev->bytes      = bytes;
+            ev->user_data  = e->recv_buf;
+
+            if (e->active) {
+                io_post_recv(ctx, e);
+            }
+
+            continue;
+        }
+
         // slot番号を確定
-        if (e->is_listen) {
+        if (!e->is_udp && e->is_listen) {
             for (int i = 0; i < ACCEPT_EX_PREPOST; i++) {
                 if (ov == &e->ov_accept[i] || ov == &e->ov_accept_recv[i]) {
                     slot = i;
@@ -890,7 +1007,7 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
         }
 
         /* listen ソケットの AcceptEx 完了かどうかを判定 */
-        if (e->is_listen == 1 && slot >= 0 && ov == &e->ov_accept[slot]) {
+        if (!e->is_udp && e->is_listen && slot >= 0 && ov == &e->ov_accept[slot]) {
             // AcceptEx 後の必須処理
             if (setsockopt(e->accept_sock[slot], SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT,
                         (char *)&e->fd, sizeof(e->fd)) == SOCKET_ERROR) {

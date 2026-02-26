@@ -35,12 +35,12 @@ class CompatibleIoDriver implements IIoDriver
 
     /**
      * ソケットハンドルを I/O ドライバへ登録依頼する  
-     * （実際は上位で制御されるためここではIDのカウントのみ行う）
      * 
      * @param $p_sock ソケットリソース
+     * @param bool $p_is_udp UDPフラグ
      * @return int ソケットハンドル
      */
-    public function register($p_sock): int
+    public function register($p_sock, bool $p_is_udp): int
     {
         // インターフェースを合わせるためだけの実装。ここでは新しいソケットハンドルIDのみ返却。
         return spl_object_id($p_sock);
@@ -48,12 +48,23 @@ class CompatibleIoDriver implements IIoDriver
 
     /**
      * ソケットハンドルを I/O ドライバへ登録依頼する（Listen用）  
-     * （実際は上位で制御されるためここではIDのカウントのみ行う）
      * 
      * @param $p_sock ソケットリソース
      * @return int ソケットハンドル
      */
     public function registerListen($p_sock): int
+    {
+        // インターフェースを合わせるためだけの実装。ここでは新しいソケットハンドルIDのみ返却。
+        return spl_object_id($p_sock);
+    }
+
+    /**
+     * ソケットハンドルを I/O ドライバへ登録依頼する（UDP待ち受け用）  
+     * 
+     * @param $p_sock ソケットリソース
+     * @return int ソケットハンドル
+     */
+    public function registerUdpListen($p_sock): int
     {
         // インターフェースを合わせるためだけの実装。ここでは新しいソケットハンドルIDのみ返却。
         return spl_object_id($p_sock);

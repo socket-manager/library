@@ -1500,7 +1500,7 @@ class SocketManager
         }
 
         // ソケットディスクリプタの生成
-        $w_ret = $this->createDescriptor($soc, true);
+        $w_ret = $this->createDescriptor($soc, true, true);
         if($w_ret === false)
         {
             $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_CREATE_FAIL->message($this->lang)]);
@@ -2834,11 +2834,18 @@ class SocketManager
         $id = null;
         if($p_listen === true)
         {
-            $id = $this->iio_driver->registerListen($p_socket);
+            if($p_udp && $p_listen && AdaptiveIoDriverFactory::$mode === AdaptiveIoDriverFactory::MODE_IO_NATIVE && PHP_OS_FAMILY === 'Windows')
+            {
+                $id = $this->iio_driver->registerUdpListen($p_socket);
+            }
+            else
+            {
+                $id = $this->iio_driver->registerListen($p_socket);
+            }
         }
         else
         {
-            $id = $this->iio_driver->register($p_socket);
+            $id = $this->iio_driver->register($p_socket, $p_udp);
         }
 
         // ソケットの接続IDを生成

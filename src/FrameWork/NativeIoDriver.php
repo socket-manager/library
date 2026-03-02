@@ -56,12 +56,13 @@ class NativeIoDriver implements IIoDriver
      * 
      * @param $p_sock ソケットリソース
      * @param bool $p_is_udp UDPフラグ
+     * @param bool $p_is_client クライアントフラグ
      * @return int ソケットハンドル
      */
-    public function register($p_sock, bool $p_is_udp): int
+    public function register($p_sock, bool $p_is_udp, bool $p_is_client): int
     {
         $handle = socketsfd($p_sock);
-        $this->ffi->io_register(FFI::addr($this->ctx), $handle, $p_is_udp);
+        $this->ffi->io_register(FFI::addr($this->ctx), $handle, $p_is_udp, $p_is_client);
         return $handle;
     }
 
@@ -83,7 +84,7 @@ class NativeIoDriver implements IIoDriver
         else
         {
             // Linux では listen も epoll に登録して問題ない
-            $this->ffi->io_register(FFI::addr($this->ctx), $handle, false);
+            $this->ffi->io_register(FFI::addr($this->ctx), $handle, false, false);
         }
 
         return $handle;
@@ -98,7 +99,6 @@ class NativeIoDriver implements IIoDriver
     public function registerUdpListen($p_sock): int
     {
         $handle = socketsfd($p_sock);
-
         $this->ffi->io_registerUdpListen(FFI::addr($this->ctx), $handle);
 
         return $handle;
@@ -207,6 +207,45 @@ class NativeIoDriver implements IIoDriver
                 $type = 'accept';
             }
             else
+            if($ev->event_type === 6 || $ev->event_type === 7)   // IO_EVENT_UDP_HANDSHAKE_READ
+            {
+                $type = 'udp_accept';
+                if($ev->event_type === 7)
+                {
+                    $type = 'handshake_read';
+                }
+
+                // C 側の udp_accept_t* を取得
+                $pkt = $this->ffi->cast('udp_accept_t*', $ev->user_data);
+
+                $ip   = FFI::string($pkt->ip);
+                $port = $pkt->port;
+
+                // データ（空パケットなら data_len = 0）
+                $bytes = (int)$pkt->data_len;
+                $cdata  = ($bytes > 0)
+                    ? $this->ffi->cast('char *', $pkt->data)
+                    // ? FFI::string($pkt->data, $bytes)
+                    : '';
+                $data = FFI::string($cdata, $pkt->data_len);
+
+                // PHP 側で free する必要がある（C 側 malloc）
+                $this->ffi->io_free($pkt);
+
+                $ret[] = [
+                    'cid'        => $cid,
+                    'sock'       => null,
+                    'type'       => $type,
+                    'bytes'      => $bytes,
+                    'error_code' => (int)$ev->error_code,
+                    'data'       => $data,
+                    'from_ip'    => $ip,
+                    'from_port'  => $port,
+                ];
+
+                continue;
+            }
+            else
             {
                 $type = 'unknown';
             }
@@ -222,5 +261,30 @@ class NativeIoDriver implements IIoDriver
         }
 
         return $ret;
+    }
+
+    /**
+     * ソケットのアドレス情報取得
+     * 
+     * @param $p_handle ソケットハンドル
+     * @param string &$p_ip_buf IPアドレス格納エリア
+     * @param int &$p_port ポート番号格納エリア
+     * @return bool true（成功） or false（失敗）
+     */
+    public function getSockName($p_handle, string &$p_ip_buf, int &$p_port): bool
+    {
+        $ip_buf = $this->ffi->new("char[22]");
+        $port_ptr = $this->ffi->new("unsigned short");
+
+        $ret = $this->ffi->io_getsockname(FFI::addr($this->ctx), $p_handle, $ip_buf, FFI::addr($port_ptr));
+        if($ret < 0)
+        {
+            return false;
+        }
+
+        $p_ip_buf = FFI::string($ip_buf);
+        $p_port = $port_ptr->cdata;
+
+        return true;
     }
 }

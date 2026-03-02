@@ -1267,6 +1267,41 @@ class SocketManager
         {
             if($p_udp === true)
             {
+                if(AdaptiveIoDriverFactory::$mode === AdaptiveIoDriverFactory::MODE_IO_NATIVE && PHP_OS_FAMILY === 'Windows')
+                {
+                    // bind socket to specified host
+                    $w_ret = socket_bind($soc, '0.0.0.0', 0);
+                    if($w_ret === false)
+                    {
+                        $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
+                        return false;
+                    }
+
+                    $id = $this->iio_driver->register($soc, $p_udp, true);
+
+                    $addr = '';
+                    $port = 0;
+                    $this->iio_driver->getSockName($id, $addr, $port);
+
+                    $dat = pack('n', $port);
+                    $len = strlen($dat);
+                    $w_ret = socket_sendto($soc, $dat, $len, 0, $p_host, $p_port);
+                    if($w_ret === false)
+                    {
+                        $this->logWriter('error', [__METHOD__ => 'socket_sendto', 'message' => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
+                        return false;
+                    }
+
+                    // ソケットディスクリプタの生成
+                    $w_ret = $this->createDescriptor($soc, $p_udp, false, true);
+                    if($w_ret === false)
+                    {
+                        $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_CREATE_FAIL->message($this->lang)]);
+                        return false;
+                    }
+                    return true;
+                }
+
                 $dat = self::UDP_CONNECTION_IDENTIFY;
                 $len = strlen($dat);
                 $w_ret = socket_sendto($soc, $dat, $len, 0, $p_host, $p_port);
@@ -1288,7 +1323,6 @@ class SocketManager
                     $this->logWriter('error', [__METHOD__ => 'socket_recvfrom', 'message' => $w_ret['message']]);
                     return false;
                 }
-                $this->logWriter('notice', [__METHOD__ => 'recv complete', 'recv data' => $buf, 'host' => $from, 'port' => $port]);
 
                 if($buf !== self::UDP_CONNECTION_IDENTIFY)
                 {
@@ -1367,8 +1401,6 @@ class SocketManager
                 'port' => $port
             ];
             $this->setProperties($des['connection_id'], ['udp_peers' => $prop]);
-
-            $this->logWriter('notice', [__METHOD__ => 'udp connect', 'connection id' => $des['connection_id']]);
 
             return true;
         }
@@ -1556,6 +1588,93 @@ class SocketManager
         foreach($chgs as $chg)
         {
             $chg_cid = $chg['cid'];
+            if($chg['type'] === 'udp_accept')
+            {
+                // Create UDP/IP sream socket
+                $w_ret = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
+                if($w_ret === false)
+                {
+                    $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket()]);
+                    return false;
+                }
+                $soc = $w_ret;
+
+                $w_ret = socket_bind($soc, '0.0.0.0', 0);
+                if($w_ret === false)
+                {
+                    $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
+                    return false;
+                }
+
+                $unpack_data = unpack('nport', $chg['data']);
+                $remote_port = (int)$unpack_data['port'];
+
+                $fd = socketsfd($soc);
+                $local_ip = '';
+                $local_port = 0;
+                $this->iio_driver->getSockName($fd, $local_ip, $local_port);
+
+                $dat = pack('n', $local_port);
+                $len = strlen($dat);
+                $w_ret = socket_sendto($soc, $dat, $len, 0, $chg['from_ip'], $remote_port);
+                if($w_ret === false)
+                {
+                    $this->logWriter('error', ['udp first send' => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
+                    return false;
+                }
+
+                // 制限接続数の判定
+                $cnt = $this->getClientCount();
+                if($cnt >= $this->limit_connection)
+                {
+                    @socket_close($soc);
+                    return true;
+                }
+
+                // ソケットディスクリプタの生成
+                $w_ret = $this->createDescriptor($soc, true);
+                if($w_ret === false)
+                {
+                    $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_CREATE_FAIL->message($this->lang)]);
+                    return false;
+                }
+                $des = $w_ret;
+
+                $prop =
+                [
+                    'host' => $chg['from_ip'],
+                    'port' => $remote_port
+                ];
+                $this->setProperties($des['connection_id'], ['udp_peers' => $prop]);
+                continue;
+            }
+            else
+            if($chg['type'] === 'handshake_read')
+            {
+                $unpack_data = unpack('nport', $chg['data']);
+                $port = (int)$unpack_data['port'];
+                $prop =
+                [
+                    'host' => $chg['from_ip'],
+                    'port' => $port
+                ];
+                $this->setProperties($chg_cid, ['udp_peers' => $prop]);
+
+                // キューの設定がない場合は抜ける
+                $w_ret = $this->cycle_driven_for_protocol->isSetQueue(ProtocolQueueEnum::CONNECT->value, StatusEnum::START->value);
+                if($w_ret === true)
+                {
+                    // 接続時のキュー名設定
+                    $w_ret = $this->setQueueNameForStart('protocol_names', $chg_cid, ProtocolQueueEnum::CONNECT->value);
+                    if($w_ret === false)
+                    {
+                        $this->logWriter('error', [__METHOD__ => "[{$chg_cid}]".LogMessageEnum::QUEUE_START_FAIL->message($this->lang)]);
+                        return false;
+                    }
+                }
+                continue;
+            }
+            else
             if($chg['type'] === 'error')
             {
                 $this->shutdown($chg_cid);
@@ -1662,9 +1781,8 @@ class SocketManager
                     if($w_ret === false)
                     {
                         $this->logWriter('error', ['udp first recv' => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
-                        return false;
+                        continue;
                     }
-                    $this->logWriter('notice', ['udp first recv data' => $buf, 'host' => $from, 'port' => $port]);
 
                     if($buf !== self::UDP_CONNECTION_IDENTIFY)
                     {
@@ -1688,7 +1806,6 @@ class SocketManager
                         $this->logWriter('error', ['udp first send' => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
                         return false;
                     }
-                    $this->logWriter('notice', ['udp first sending len' => $w_ret, 'udp first sending data' => '']);
 
                     // 制限接続数の判定
                     $cnt = $this->getClientCount();
@@ -1713,8 +1830,6 @@ class SocketManager
                         'port' => $port
                     ];
                     $this->setProperties($des['connection_id'], ['udp_peers' => $prop]);
-
-                    $this->logWriter('notice', [__METHOD__ => 'udp select', 'connection id' => $des['connection_id']]);
                 }
 
                 if($des !== null)
@@ -2151,7 +2266,14 @@ class SocketManager
             }
             else
             {
-                return null;
+                if(AdaptiveIoDriverFactory::$mode === AdaptiveIoDriverFactory::MODE_IO_NATIVE)
+                {
+                    return false;
+                }
+                else
+                {
+                    return null;
+                }
             }
         }
         else
@@ -2827,9 +2949,10 @@ class SocketManager
      * @param Socket $p_socket ソケットリソース
      * @param bool $p_udp UDPフラグ
      * @param bool $p_listen Listenポートフラグ
+     * @param bool $p_is_client クライアントフラグ
      * @return array|bool ディスクリプタ or false（失敗）
      */
-    private function createDescriptor(Socket $p_socket, bool $p_udp = false, bool $p_listen = false)
+    private function createDescriptor(Socket $p_socket, bool $p_udp = false, bool $p_listen = false, bool $p_is_client = false)
     {
         $id = null;
         if($p_listen === true)
@@ -2845,7 +2968,7 @@ class SocketManager
         }
         else
         {
-            $id = $this->iio_driver->register($p_socket, $p_udp);
+            $id = $this->iio_driver->register($p_socket, $p_udp, $p_is_client);
         }
 
         // ソケットの接続IDを生成

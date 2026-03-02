@@ -38,9 +38,10 @@ class CompatibleIoDriver implements IIoDriver
      * 
      * @param $p_sock ソケットリソース
      * @param bool $p_is_udp UDPフラグ
+     * @param bool $p_is_client クライアントフラグ
      * @return int ソケットハンドル
      */
-    public function register($p_sock, bool $p_is_udp): int
+    public function register($p_sock, bool $p_is_udp, bool $p_is_client): int
     {
         // インターフェースを合わせるためだけの実装。ここでは新しいソケットハンドルIDのみ返却。
         return spl_object_id($p_sock);
@@ -145,5 +146,18 @@ class CompatibleIoDriver implements IIoDriver
             ];
         }
         return $ret;
+    }
+
+    /**
+     * ソケットのアドレス情報取得
+     * 
+     * @param $p_handle ソケットハンドル
+     * @param string &$p_ip_buf IPアドレス格納エリア
+     * @param int &$p_port ポート番号格納エリア
+     * @return bool true（成功） or false（失敗）
+     */
+    public function getSockName($p_handle, string &$p_ip_buf, int &$p_port): bool
+    {
+        return true;
     }
 }

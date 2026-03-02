@@ -12,6 +12,8 @@
 #define IO_EVENT_ERROR       3
 #define IO_EVENT_DISCONNECT  4
 #define IO_EVENT_ACCEPT      5   // AcceptEx 用
+#define IO_EVENT_UDP_ACCEPT  6   // UDP 専用 accept イベント
+#define IO_EVENT_UDP_HANDSHAKE_READ 7  // クライアント側 UDP ハンドシェイク read
 
 #define MAX_EVENTS           128
 
@@ -33,6 +35,14 @@ typedef struct {
     io_event  events[MAX_EVENTS];
 } io_event_list;
 
+// UDP Accept用user_data
+typedef struct {
+    char               ip[INET_ADDRSTRLEN]; // "xxx.xxx.xxx.xxx"
+    unsigned short     port;                // ホストオーダー
+    size_t             data_len;
+    char               data[];
+} udp_accept_t;
+
 /* IOCP 用エントリ（内部専用） */
 typedef struct io_fd_entry {
     SOCKET     fd;
@@ -42,8 +52,14 @@ typedef struct io_fd_entry {
     int        is_listen;
     int        is_udp;      // UDPフラグ
 
+    int        is_udp_handshake;   // クライアント側 UDP の初回 read 用フラグ
+
     // 受信バッファ
     char      *recv_buf;
+
+    // UDP Listen 用：送信元アドレス格納
+    struct sockaddr_in udp_from;
+    int                udp_from_len;
 
     // listen ソケット専用：複数 AcceptEx スロット
     OVERLAPPED ov_accept[ACCEPT_EX_PREPOST];
@@ -351,16 +367,17 @@ static int io_post_zero_recv(io_context *ctx, io_fd_entry *e)
     DWORD flags = 0;
     WSABUF buf;
 
-    /* 0 バイト読み込み用のダミー */
-    buf.buf = NULL;
-    buf.len = 0;
-
     if (e->is_udp && e->is_listen) {
         // UDP ハンドシェイク用ポート
+        buf.buf = e->recv_buf;
+        buf.len = (ULONG)ctx->recv_buf_size;
         flags = MSG_PEEK;
     } else if (!e->is_udp && e->is_listen) {
         // TCP listen socket → 0 バイト recv は禁止
         return 0;
+    } else {
+        buf.buf = NULL;
+        buf.len = 0;
     }
 
     int r = WSARecv(e->fd, &buf, 1, NULL, &flags, &e->ov_read, NULL);
@@ -373,6 +390,45 @@ static int io_post_zero_recv(io_context *ctx, io_fd_entry *e)
         if (err != WSA_IO_PENDING) {
             /* ここではソケットは閉じない。PHP 側が管理する前提。 */
             e->active         = 0;
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+/* UDP ListenFD 用の「WSARecvFrom」を発行 */
+static int io_post_recvfrom(io_context *ctx, io_fd_entry *e)
+{
+    (void)ctx; // 現状 ctx は未使用でもよい
+
+    ZeroMemory(&e->ov_read, sizeof(OVERLAPPED));
+
+    DWORD  flags = 0;
+    DWORD  bytes = 0;
+    WSABUF buf;
+
+    buf.buf = e->recv_buf;
+    buf.len = (ULONG)ctx->recv_buf_size;
+
+    e->udp_from_len = sizeof(e->udp_from);
+
+    int r = WSARecvFrom(
+        e->fd,
+        &buf,
+        1,
+        &bytes,
+        &flags,
+        (struct sockaddr *)&e->udp_from,
+        &e->udp_from_len,
+        &e->ov_read,
+        NULL
+    );
+
+    if (r == SOCKET_ERROR) {
+        int err = WSAGetLastError();
+        if (err != WSA_IO_PENDING) {
+            e->active = 0;
             return -1;
         }
     }
@@ -567,7 +623,7 @@ int io_core_init(io_context *ctx, size_t recv_buf_size)
  *   < 0 : エラー
  */
 __declspec(dllexport)
-int io_register(io_context *ctx, int fd, int is_udp)
+int io_register(io_context *ctx, int fd, int is_udp, int is_client)
 {
     if (ctx == NULL) {
         return -1;
@@ -604,12 +660,14 @@ int io_register(io_context *ctx, int fd, int is_udp)
     e->is_listen      = 0;
     e->is_udp         = is_udp;
 
-    // N バイト WSARecv
-    if (io_post_recv(ctx, e) < 0) {
-        return -1;
+    // クライアント側 UDP のみ「ハンドシェイク中」としてマーク
+    if (is_udp && is_client) {
+        e->is_udp_handshake = 1;
+        return io_post_recvfrom(ctx, e);
+    } else {
+        e->is_udp_handshake = 0;
+        return io_post_recv(ctx, e);    // N バイト WSARecv
     }
-
-    return 0;
 }
 
 /**
@@ -770,32 +828,9 @@ int io_registerUdpListen(io_context *ctx, int fd)
     e->is_listen = 1;   // UDP ハンドシェイク用ポート
     e->is_udp    = 1;
 
-    // 0 バイト recv(MSG_PEEK) を発行
-    if (io_post_zero_recv(ctx, e) < 0) {
+    // 0 バイト recv(MSG_PEEK) ではなく、WSARecvFrom で実データを読む
+    if (io_post_recvfrom(ctx, e) < 0) {
         return -1;
-    }
-
-    // ------------------------------------------------------------
-    // UDP IOCP ウォームアップ
-    // ------------------------------------------------------------
-    {
-        struct sockaddr_in addr;
-        int addrlen = sizeof(addr);
-
-        if (getsockname(s, (struct sockaddr *)&addr, &addrlen) == 0) {
-
-            // 自分自身へ空パケットを送る
-            SOCKET warm = WSASocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, 0);
-            if (warm != INVALID_SOCKET) {
-
-                // ノンブロッキングにしない（同期 sendto の方が確実）
-                char dummy = 0;
-                sendto(warm, &dummy, 1, 0,
-                       (struct sockaddr *)&addr, sizeof(addr));
-
-                closesocket(warm);
-            }
-        }
     }
 
     return 0;
@@ -962,13 +997,30 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
         // -----------------------------
         if (e->is_udp && e->is_listen && ov == &e->ov_read) {
 
-            ev->event_type = IO_EVENT_READ;  // 空パケット到着通知
-            ev->bytes      = 0;
-            ev->user_data  = NULL;
+            // bytes には受信データ長（空パケットなら 0）が入っている
+            udp_accept_t *pkt = (udp_accept_t *)malloc(sizeof(udp_accept_t) + bytes);
+            if (!pkt) {
+                ev->event_type = IO_EVENT_ERROR;
+                ev->error_code = ERROR_NOT_ENOUGH_MEMORY;
+                e->active      = 0;
+                continue;
+            }
 
-            // 再度 0 バイト recv(MSG_PEEK)
+            inet_ntop(AF_INET, &e->udp_from.sin_addr, pkt->ip, sizeof(pkt->ip));    // IPを文字列化
+            pkt->port = ntohs(e->udp_from.sin_port);
+
+            pkt->data_len = (size_t)bytes;
+            if (bytes > 0) {
+                memcpy(pkt->data, e->recv_buf, bytes);
+            }
+
+            ev->event_type = IO_EVENT_UDP_ACCEPT;  // UDP 専用 accept イベント
+            ev->bytes      = (size_t)bytes;
+            ev->user_data  = pkt;
+
+            // 次のクライアント用に再度 WSARecvFrom を発行
             if (e->active) {
-                io_post_zero_recv(ctx, e);
+                io_post_recvfrom(ctx, e);
             }
 
             continue;
@@ -979,20 +1031,44 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
         // -----------------------------
         if (e->is_udp && !e->is_listen && ov == &e->ov_read) {
 
-            if (bytes == 0) {
-                ev->event_type = IO_EVENT_DISCONNECT;
-                e->active = 0;
-                continue;
-            }
+            if (e->is_udp_handshake) {
+                udp_accept_t *pkt = malloc(sizeof(udp_accept_t) + bytes);
+                if (!pkt) {
+                    ev->event_type = IO_EVENT_ERROR;
+                    ev->error_code = ERROR_NOT_ENOUGH_MEMORY;
+                    e->active      = 0;
+                    continue;
+                }
 
-            ev->event_type = IO_EVENT_READ;
-            ev->bytes      = bytes;
-            ev->user_data  = e->recv_buf;
+                inet_ntop(AF_INET, &e->udp_from.sin_addr, pkt->ip, sizeof(pkt->ip));
+                pkt->port = ntohs(e->udp_from.sin_port);
+                pkt->data_len = bytes;
+                memcpy(pkt->data, e->recv_buf, bytes);
 
-            if (e->active) {
+                ev->event_type = IO_EVENT_UDP_HANDSHAKE_READ;
+                ev->bytes      = (size_t)bytes;
+                ev->user_data  = pkt;
+
+                e->is_udp_handshake = 0;
+
+                // 次は通常の recv に切り替え
                 io_post_recv(ctx, e);
-            }
+            } else {
+                if (bytes == 0) {
+                    ev->event_type = IO_EVENT_DISCONNECT;
+                    e->active = 0;
+                    continue;
+                }
 
+                // 通常の UDP データ受信
+                ev->event_type = IO_EVENT_READ;
+                ev->bytes      = bytes;
+                ev->user_data  = e->recv_buf;
+
+                if (e->active) {
+                    io_post_recv(ctx, e);
+                }
+            }
             continue;
         }
 
@@ -1121,5 +1197,56 @@ int io_core_close(io_context *ctx)
     }
 
     WSACleanup();
+    return 0;
+}
+
+/**
+ * メモリ解放
+ *
+ * p: メモリポインタ
+ */
+__declspec(dllexport)
+void io_free(void *p)
+{
+    free(p);
+}
+
+/**
+ * ソケットのアドレス情報の取得
+ *
+ * ctx: io_context* IOCP コンテキスト
+ * fd : ソケットハンドル
+ * ip_buf : IPアドレス格納ポインタ
+ * port : ポート番号格納ポインタ
+ * 
+ * return:
+ *   = 0 : 正常
+ *   < 0 : エラー
+ */
+__declspec(dllexport)
+int io_getsockname(io_context *ctx, int fd, char *ip_buf, unsigned short *port)
+{
+    if (ctx == NULL || ip_buf == NULL || port == NULL) {
+        return -1;
+    }
+
+    SOCKET s = (SOCKET)fd;
+
+    struct sockaddr_in addr;
+    int addrlen = sizeof(addr);
+    if (getsockname(s, (struct sockaddr *)&addr, &addrlen) == SOCKET_ERROR) {
+        return -1;
+    }
+
+    if (addr.sin_family != AF_INET) {
+        return -1;
+    }
+
+    if (inet_ntop(AF_INET, &addr.sin_addr, ip_buf, INET_ADDRSTRLEN) == NULL) {
+        return -1;
+    }
+
+    *port = ntohs(addr.sin_port);
+
     return 0;
 }

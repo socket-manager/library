@@ -50,6 +50,14 @@ class AdaptiveIoDriverFactory
             {
                 case 'Windows':
                     $header_os = <<<CDEF
+                        // UDP Accept用user_data
+                        typedef struct {
+                            char           ip[16];        // "xxx.xxx.xxx.xxx"
+                            unsigned short port;          // ホストオーダー
+                            size_t         data_len;
+                            char           data[];        // 可変長
+                        } udp_accept_t;
+
                         typedef struct {
                             void* iocp;          // HANDLE → void*
 
@@ -68,6 +76,12 @@ class AdaptiveIoDriverFactory
 
                         // Windows 専用：listen ソケット登録
                         int io_registerListen(io_context* ctx, int fd);
+                        // Windows 専用：UDP 待ち受け ソケット登録
+                        int io_registerUdpListen(io_context* ctx, int fd);
+                        // メモリ解放
+                        void io_free(void *p);
+                        // ソケットアドレス情報取得
+                        int io_getsockname(io_context *ctx, int fd, char *ip_buf, unsigned short *port);
 CDEF;
                     $lib = __DIR__ . '/driver/io_core_win.dll';
                     break;
@@ -110,7 +124,7 @@ CDEF;
                 // fd: OS のソケットハンドル（Windows=SOCKET, Linux=fd）
                 // is_udp: UDPフラグ（1:udp、0:tcp）
                 // return: 0 = success, 非0 = error code
-                int io_register(io_context* ctx, int fd, int is_udp);
+                int io_register(io_context* ctx, int fd, int is_udp, int is_client);
 
                 // ソケットハンドルを IO ドライバから解除
                 // ctx: IO ドライバのコンテキスト

@@ -123,6 +123,7 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(arginfo_socket_sendto, 0, 0, 4)
     ZEND_ARG_OBJ_INFO(0, socket, Socket, 0)
     ZEND_ARG_TYPE_INFO(0, data, IS_STRING, 0)
+    ZEND_ARG_TYPE_INFO(0, length, IS_LONG, 0)
     ZEND_ARG_TYPE_INFO(0, flags, IS_LONG, 1)
     ZEND_ARG_TYPE_INFO(0, address, IS_STRING, 0)
     ZEND_ARG_TYPE_INFO(0, port, IS_LONG, 0)
@@ -239,16 +240,6 @@ PHP_FUNCTION(socket_import_fd)
 
     SOCKET s = (SOCKET)fd;
 
-    /* 非ブロッキングにしておく（IOCP 前提） */
-    {
-        u_long mode = 1;
-        if (ioctlsocket(s, FIONBIO, &mode) == SOCKET_ERROR) {
-            php_error_docref(NULL, E_WARNING,
-                "ioctlsocket(FIONBIO) failed: %d", WSAGetLastError());
-            RETURN_FALSE;
-        }
-    }
-
     /* Socket オブジェクトを生成 */
     zval zsock_obj;
     object_init_ex(&zsock_obj, socket_ce);
@@ -257,7 +248,7 @@ PHP_FUNCTION(socket_import_fd)
     php_sock->bsd_socket = s;
     php_sock->type       = SOCK_STREAM;
     php_sock->error      = 0;
-    php_sock->blocking   = 0;
+    php_sock->blocking   = 1;  /* 最初はブロッキング扱い */
 
     RETURN_ZVAL(&zsock_obj, 1, 0);
 }
@@ -289,17 +280,6 @@ PHP_FUNCTION(socket_create)
         php_error_docref(NULL, E_WARNING,
             "socket_create failed: %d", WSAGetLastError());
         RETURN_FALSE;
-    }
-
-    /* IOCP 前提なら非ブロッキングにしておく */
-    {
-        u_long mode = 1;
-        if (ioctlsocket(s, FIONBIO, &mode) == SOCKET_ERROR) {
-            php_error_docref(NULL, E_WARNING,
-                "ioctlsocket(FIONBIO) failed: %d", WSAGetLastError());
-            closesocket(s);
-            RETURN_FALSE;
-        }
     }
 
     zval zsock_obj;
@@ -472,13 +452,15 @@ PHP_FUNCTION(socket_sendto)
 {
     zval *zsock;
     zend_string *data;
+    zend_long length = 0;
     zend_long flags = 0;
     zend_string *address;
     zend_long port;
 
-    ZEND_PARSE_PARAMETERS_START(4, 5)
+    ZEND_PARSE_PARAMETERS_START(4, 6)
         Z_PARAM_OBJECT_OF_CLASS(zsock, socket_ce)
         Z_PARAM_STR(data)
+        Z_PARAM_LONG(length)
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(flags)
         Z_PARAM_STR(address)
@@ -487,6 +469,12 @@ PHP_FUNCTION(socket_sendto)
 
     php_socket *php_sock = Z_SOCKET_P(zsock);
     ENSURE_SOCKET_VALID(php_sock);
+
+    /* length が 0 または未指定なら全長 */
+    size_t to_send = ZSTR_LEN(data);
+    if (length > 0 && (size_t)length < to_send) {
+        to_send = (size_t)length;
+    }
 
     struct sockaddr_in sa;
     memset(&sa, 0, sizeof(sa));
@@ -497,7 +485,7 @@ PHP_FUNCTION(socket_sendto)
     int n = sendto(
         php_sock->bsd_socket,
         ZSTR_VAL(data),
-        (int)ZSTR_LEN(data),
+        (int)to_send,
         (int)flags,
         (struct sockaddr *)&sa,
         sizeof(sa)
@@ -799,7 +787,18 @@ PHP_FUNCTION(socket_set_nonblock)
         Z_PARAM_OBJECT_OF_CLASS(zsock, socket_ce)
     ZEND_PARSE_PARAMETERS_END();
 
-    /* すでに非ブロッキングなので何もしない */
+    php_socket *php_sock = Z_SOCKET_P(zsock);
+    ENSURE_SOCKET_VALID(php_sock);
+
+    u_long mode = 1;
+    if (ioctlsocket(php_sock->bsd_socket, FIONBIO, &mode) == SOCKET_ERROR) {
+        php_sock->error = WSAGetLastError();
+        php_error_docref(NULL, E_WARNING,
+            "ioctlsocket(FIONBIO) failed: %d", php_sock->error);
+        RETURN_FALSE;
+    }
+
+    php_sock->blocking = 0;
     RETURN_TRUE;
 }
 
@@ -943,6 +942,9 @@ PHP_MINIT_FUNCTION(socketsfd)
 
     REGISTER_LONG_CONSTANT("SOL_SOCKET", SOL_SOCKET, CONST_CS | CONST_PERSISTENT);
     REGISTER_LONG_CONSTANT("SO_REUSEADDR", SO_REUSEADDR, CONST_CS | CONST_PERSISTENT);
+
+    REGISTER_LONG_CONSTANT("SO_SNDBUF", SO_SNDBUF, CONST_CS | CONST_PERSISTENT);
+    REGISTER_LONG_CONSTANT("SO_RCVBUF", SO_RCVBUF, CONST_CS | CONST_PERSISTENT);
 
     zend_class_entry ce;
 

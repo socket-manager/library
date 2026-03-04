@@ -99,6 +99,12 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_socket_create, 0, 0, 0)
     ZEND_ARG_TYPE_INFO(0, protocol, IS_LONG, 1)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_socket_create_raw, 0, 0, 0)
+    ZEND_ARG_TYPE_INFO(0, domain, IS_LONG, 1)
+    ZEND_ARG_TYPE_INFO(0, type, IS_LONG, 1)
+    ZEND_ARG_TYPE_INFO(0, protocol, IS_LONG, 1)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_socket_read, 0, 0, 2)
     ZEND_ARG_OBJ_INFO(0, socket, Socket, 0)
     ZEND_ARG_TYPE_INFO(0, length, IS_LONG, 0)
@@ -186,6 +192,14 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_socket_close, 0, 0, 1)
     ZEND_ARG_OBJ_INFO(0, socket, Socket, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_socket_select, 0, 0, 3)
+    ZEND_ARG_ARRAY_INFO(1, read, 0)
+    ZEND_ARG_ARRAY_INFO(1, write, 0)
+    ZEND_ARG_ARRAY_INFO(1, except, 0)
+    ZEND_ARG_TYPE_INFO(0, tv_sec, IS_LONG, 1)
+    ZEND_ARG_TYPE_INFO(0, tv_usec, IS_LONG, 1)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_socket_last_error, 0, 0, 0)
@@ -294,6 +308,50 @@ PHP_FUNCTION(socket_create)
     RETURN_ZVAL(&zsock_obj, 1, 0);
 }
 
+/* proto Socket socket_create_raw(int $domain = AF_INET, int $type = SOCK_STREAM, int $protocol = SOL_TCP)
+   OVERLAPPED を付けないソケットを生成する（WSAPoll ネイティブモード用） */
+PHP_FUNCTION(socket_create_raw)
+{
+    zend_long domain = AF_INET;
+    zend_long type = SOCK_STREAM;
+    zend_long protocol = IPPROTO_TCP;
+
+    ZEND_PARSE_PARAMETERS_START(0, 3)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_LONG(domain)
+        Z_PARAM_LONG(type)
+        Z_PARAM_LONG(protocol)
+    ZEND_PARSE_PARAMETERS_END();
+
+    SOCKET s = WSASocket(
+        (int)domain,
+        (int)type,
+        (int)protocol,
+        NULL,
+        0,
+        0
+    );
+    // SOCKET s = socket((int)domain, (int)type, (int)protocol);
+
+    if (s == INVALID_SOCKET) {
+        php_error_docref(NULL, E_WARNING,
+            "socket_create_raw failed: %d", WSAGetLastError());
+        RETURN_FALSE;
+    }
+
+    /* Socket オブジェクト生成 */
+    zval zsock_obj;
+    object_init_ex(&zsock_obj, socket_ce);
+
+    php_socket *php_sock = Z_SOCKET_P(&zsock_obj);
+    php_sock->bsd_socket = s;
+    php_sock->type       = (int)type;
+    php_sock->error      = 0;
+    php_sock->blocking   = 1;  /* PHP 側で socket_set_nonblock を呼ぶ前提 */
+
+    RETURN_ZVAL(&zsock_obj, 1, 0);
+}
+
 /* proto string|false socket_read(Socket $socket, int $length, int $flags = 0) */
 PHP_FUNCTION(socket_read)
 {
@@ -391,18 +449,27 @@ PHP_FUNCTION(socket_write)
 PHP_FUNCTION(socket_recvfrom)
 {
     zval *zsock;
-    zval *zbuf, *zaddr, *zport;
+    zval *zbuf, *zaddr = NULL, *zport = NULL;
     zend_long length, flags = 0;
 
     ZEND_PARSE_PARAMETERS_START(4, 6)
         Z_PARAM_OBJECT_OF_CLASS(zsock, socket_ce)
         Z_PARAM_ZVAL(zbuf)
         Z_PARAM_LONG(length)
+        Z_PARAM_LONG(flags)      /* 第4引数を必須に寄せるならこのままでOK */
         Z_PARAM_OPTIONAL
-        Z_PARAM_LONG(flags)
         Z_PARAM_ZVAL(zaddr)
         Z_PARAM_ZVAL(zport)
     ZEND_PARSE_PARAMETERS_END();
+
+    /* ★ ここで自前でデリファレンスする */
+    ZVAL_DEREF(zbuf);
+    if (zaddr) {
+        ZVAL_DEREF(zaddr);
+    }
+    if (zport) {
+        ZVAL_DEREF(zport);
+    }
 
     php_socket *php_sock = Z_SOCKET_P(zsock);
     ENSURE_SOCKET_VALID(php_sock);
@@ -435,13 +502,16 @@ PHP_FUNCTION(socket_recvfrom)
     ZSTR_VAL(buf)[n] = '\0';
     ZSTR_LEN(buf) = n;
 
-    /* 参照返し */
+    /* buf を返却 */
+    zval_dtor(zbuf);
     ZVAL_STR(zbuf, buf);
 
     if (zaddr) {
+        zval_dtor(zaddr);
         ZVAL_STRING(zaddr, inet_ntoa(sa.sin_addr));
     }
     if (zport) {
+        zval_dtor(zport);
         ZVAL_LONG(zport, ntohs(sa.sin_port));
     }
 
@@ -829,6 +899,208 @@ PHP_FUNCTION(socket_close)
     RETURN_TRUE;
 }
 
+static int php_sock_array_to_poll(uint32_t arg_num, zval *sock_array, WSAPOLLFD *pfds, int *idx, short events)
+{
+    zval       *element;
+    php_socket *php_sock;
+
+    if (!sock_array || Z_TYPE_P(sock_array) != IS_ARRAY) {
+        return 0;
+    }
+
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(sock_array), element) {
+        ZVAL_DEREF(element);
+
+        if (Z_TYPE_P(element) != IS_OBJECT || Z_OBJCE_P(element) != socket_ce) {
+            zend_argument_type_error(
+                arg_num,
+                "must only have elements of type Socket, %s given",
+                zend_zval_value_name(element)
+            );
+            return -1;
+        }
+
+        php_sock = Z_SOCKET_P(element);
+        if (!php_sock || php_sock->bsd_socket == PHP_SOCKETS_INVALID_SOCKET) {
+            zend_argument_type_error(arg_num, "contains a closed socket");
+            return -1;
+        }
+
+        pfds[*idx].fd      = php_sock->bsd_socket;
+        pfds[*idx].events  = events;
+        pfds[*idx].revents = 0;
+        (*idx)++;
+    } ZEND_HASH_FOREACH_END();
+
+    return 1;
+}
+static void php_sock_array_from_poll(zval *sock_array, WSAPOLLFD *pfds, int nfds, short event_mask)
+{
+    zval        *element;
+    zval        *dest_element;
+    php_socket  *php_sock;
+    zval         new_hash;
+    zend_ulong   num_key;
+    zend_string *key;
+    int          i;
+
+    if (!sock_array || Z_TYPE_P(sock_array) != IS_ARRAY) {
+        return;
+    }
+
+    array_init(&new_hash);
+
+    ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(sock_array), num_key, key, element) {
+        ZVAL_DEREF(element);
+
+        if (Z_TYPE_P(element) != IS_OBJECT || Z_OBJCE_P(element) != socket_ce) {
+            continue;
+        }
+
+        php_sock = Z_SOCKET_P(element);
+        if (!php_sock || php_sock->bsd_socket == PHP_SOCKETS_INVALID_SOCKET) {
+            continue;
+        }
+
+        for (i = 0; i < nfds; i++) {
+            if (pfds[i].fd == php_sock->bsd_socket && (pfds[i].revents & event_mask)) {
+                if (key) {
+                    dest_element = zend_hash_add(Z_ARRVAL(new_hash), key, element);
+                } else {
+                    dest_element = zend_hash_index_update(Z_ARRVAL(new_hash), num_key, element);
+                }
+                if (dest_element) {
+                    Z_ADDREF_P(dest_element);
+                }
+                break;
+            }
+        }
+    } ZEND_HASH_FOREACH_END();
+
+    zval_ptr_dtor(sock_array);
+    ZVAL_COPY_VALUE(sock_array, &new_hash);
+}
+PHP_FUNCTION(socket_select)
+{
+    zval     *r_array, *w_array, *e_array;
+    zend_long sec, usec = 0;
+    bool      sec_is_null = 0;
+
+    int       nfds = 0;
+    int       idx  = 0;
+    int       retval;
+    int       timeout = -1;
+
+    ZEND_PARSE_PARAMETERS_START(3, 5)
+        Z_PARAM_ARRAY_EX2(r_array, 1, 1, 0)
+        Z_PARAM_ARRAY_EX2(w_array, 1, 1, 0)
+        Z_PARAM_ARRAY_EX2(e_array, 1, 1, 0)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_LONG_OR_NULL(sec, sec_is_null)
+        Z_PARAM_LONG(usec)
+    ZEND_PARSE_PARAMETERS_END();
+
+    /* 少なくともどれか1つは配列である必要がある */
+    if ((r_array == NULL || Z_TYPE_P(r_array) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(r_array)) == 0) &&
+        (w_array == NULL || Z_TYPE_P(w_array) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(w_array)) == 0) &&
+        (e_array == NULL || Z_TYPE_P(e_array) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(e_array)) == 0)) {
+        zend_value_error("socket_select(): At least one array argument must be passed");
+        RETURN_THROWS();
+    }
+
+    /* poll 対象ソケット数を概算（上限） */
+    if (r_array && Z_TYPE_P(r_array) == IS_ARRAY) {
+        nfds += (int)zend_hash_num_elements(Z_ARRVAL_P(r_array));
+    }
+    if (w_array && Z_TYPE_P(w_array) == IS_ARRAY) {
+        nfds += (int)zend_hash_num_elements(Z_ARRVAL_P(w_array));
+    }
+    if (e_array && Z_TYPE_P(e_array) == IS_ARRAY) {
+        nfds += (int)zend_hash_num_elements(Z_ARRVAL_P(e_array));
+    }
+
+    if (nfds == 0) {
+        zend_value_error("socket_select(): At least one array argument must be passed");
+        RETURN_THROWS();
+    }
+
+    WSAPOLLFD *pfds = ecalloc(nfds, sizeof(WSAPOLLFD));
+    if (!pfds) {
+        zend_error_noreturn(E_ERROR, "socket_select(): Unable to allocate memory for poll fds");
+    }
+
+    /* 各配列から pfds を構築 */
+    if (r_array && Z_TYPE_P(r_array) == IS_ARRAY) {
+        int ret = php_sock_array_to_poll(1, r_array, pfds, &idx, POLLRDNORM);
+        if (ret == -1) {
+            efree(pfds);
+            RETURN_THROWS();
+        }
+    }
+    if (w_array && Z_TYPE_P(w_array) == IS_ARRAY) {
+        int ret = php_sock_array_to_poll(2, w_array, pfds, &idx, POLLWRNORM);
+        if (ret == -1) {
+            efree(pfds);
+            RETURN_THROWS();
+        }
+    }
+    if (e_array && Z_TYPE_P(e_array) == IS_ARRAY) {
+        int ret = php_sock_array_to_poll(3, e_array, pfds, &idx, POLLERR | POLLHUP | POLLNVAL);
+        if (ret == -1) {
+            efree(pfds);
+            RETURN_THROWS();
+        }
+    }
+
+    /* 実際に使う fd 数は idx */
+    nfds = idx;
+    if (nfds == 0) {
+        efree(pfds);
+        RETURN_LONG(0);
+    }
+
+    /* タイムアウト設定（sec が null の場合は無限待ち） */
+    if (!sec_is_null) {
+        /* ms 単位に変換 */
+        timeout = (int)(sec * 1000);
+        if (usec > 0) {
+            timeout += (int)(usec / 1000);
+        }
+        if (timeout < 0) {
+            timeout = -1;
+        }
+    } else {
+        timeout = -1; /* 無限待ち */
+    }
+
+    retval = WSAPoll(pfds, nfds, timeout);
+
+    if (retval == SOCKET_ERROR) {
+        int err = WSAGetLastError();
+        efree(pfds);
+        php_error_docref(NULL, E_WARNING,
+            "Unable to poll [%d]", err);
+        RETURN_FALSE;
+    }
+
+    /* poll 結果で各配列をフィルタリング */
+    if (r_array && Z_TYPE_P(r_array) == IS_ARRAY) {
+        php_sock_array_from_poll(r_array, pfds, nfds,
+            POLLRDNORM | POLLPRI | POLLERR | POLLHUP | POLLNVAL);
+    }
+    if (w_array && Z_TYPE_P(w_array) == IS_ARRAY) {
+        php_sock_array_from_poll(w_array, pfds, nfds,
+            POLLWRNORM | POLLERR | POLLHUP | POLLNVAL);
+    }
+    if (e_array && Z_TYPE_P(e_array) == IS_ARRAY) {
+        php_sock_array_from_poll(e_array, pfds, nfds,
+            POLLERR | POLLHUP | POLLNVAL);
+    }
+
+    efree(pfds);
+    RETURN_LONG(retval);
+}
+
 PHP_FUNCTION(socket_last_error)
 {
     zval *zsock = NULL;
@@ -907,6 +1179,7 @@ static const zend_function_entry socketsfd_functions[] = {
 #ifdef PHP_WIN32
     PHP_FE(socket_import_fd,    arginfo_socket_import_fd)
     PHP_FE(socket_create,       arginfo_socket_create)
+    PHP_FE(socket_create_raw,   arginfo_socket_create_raw)
     PHP_FE(socket_read,         arginfo_socket_read)
     PHP_FE(socket_write,        arginfo_socket_write)
     PHP_FE(socket_recvfrom,     arginfo_socket_recvfrom)
@@ -922,6 +1195,7 @@ static const zend_function_entry socketsfd_functions[] = {
     PHP_FE(socket_set_nonblock, arginfo_socket_set_nonblock)
     PHP_FE(socket_shutdown,     arginfo_socket_shutdown)
     PHP_FE(socket_close,        arginfo_socket_close)
+    PHP_FE(socket_select,       arginfo_socket_select)
     PHP_FE(socket_last_error,   arginfo_socket_last_error)
     PHP_FE(socket_strerror,     arginfo_socket_strerror)
 #endif

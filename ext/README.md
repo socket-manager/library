@@ -4,7 +4,7 @@
 # **■ 依存関係**
 
 - PHP 8.4 以上  
-- `sockets` 拡張が有効であること  
+- `sockets` 拡張が有効であること（Linux版のみ）  
 - C コンパイラ（Linux: gcc / Windows: MSVC）
 
 ---
@@ -41,7 +41,7 @@ sudo make install
 `php.ini` または mods-available に以下を追加：
 
 ```
-extension=socketsfd.so
+extension=socketsfd
 ```
 
 ### **5. 読み込み確認**
@@ -109,17 +109,15 @@ C:\php\ext\php_socketsfd.dll
 ### **7. php.ini に追加**
 
 ```
-extension=php_socketsfd.dll
+extension=socketsfd
 ```
 
 ---
 
 # **■ 注意事項**
 
-- この拡張は `sockets` 拡張に依存します。  
-  Linux / Windows ともに `sockets` が先にロードされている必要があります。
+- Linux 版は `sockets` が先にロードされている必要があります。
 - Ubuntu/Debian では `sockets` は標準で有効です。
-- Windows では `php.ini` に `extension=sockets` が必要な場合があります。
 
 ---
 

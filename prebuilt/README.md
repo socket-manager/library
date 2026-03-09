@@ -10,7 +10,7 @@
 
 2. `/etc/php/8.4/mods-available/socketsfd.ini` を作成し、以下を記述  
    ```
-   extension=socketsfd.so
+   extension=socketsfd
    ```
 
 3. 拡張を有効化  
@@ -42,7 +42,7 @@
 
 3. `php.ini` または `mods-available` に以下を追加  
    ```
-   extension=socketsfd.so
+   extension=socketsfd
    ```
 
 4. 読み込み確認  
@@ -62,7 +62,7 @@
 
 2. `php.ini` に以下を追加  
    ```
-   extension=php_socketsfd.dll
+   extension=socketsfd
    ```
 
 3. 読み込み確認  
@@ -75,7 +75,7 @@
 ## **必要条件**
 
 - PHP 8.4 以上  
-- `sockets` 拡張が有効であること  
+- Linux 版の場合 `sockets` 拡張が有効であること  
   （Ubuntu/Debian では標準で有効）
 
 ---

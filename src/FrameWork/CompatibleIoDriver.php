@@ -17,6 +17,8 @@ use SocketManager\Library\SocketManager;
  */
 class CompatibleIoDriver implements IIoDriver
 {
+    private ?string $await_connection_id = null;
+
     private array $sockets;         // Socket リソースの配列（実体は上位のクラスに存在）
 
     private SocketManager $manager; // SocketManagerインスタンス
@@ -56,7 +58,9 @@ class CompatibleIoDriver implements IIoDriver
     public function registerListen($p_sock): int
     {
         // インターフェースを合わせるためだけの実装。ここでは新しいソケットハンドルIDのみ返却。
-        return spl_object_id($p_sock);
+        $id = spl_object_id($p_sock);
+        $this->await_connection_id = '#'.$id;
+        return $id;
     }
 
     /**
@@ -68,7 +72,9 @@ class CompatibleIoDriver implements IIoDriver
     public function registerUdpListen($p_sock): int
     {
         // インターフェースを合わせるためだけの実装。ここでは新しいソケットハンドルIDのみ返却。
-        return spl_object_id($p_sock);
+        $id = spl_object_id($p_sock);
+        $this->await_connection_id = '#'.$id;
+        return $id;
     }
 
     /**
@@ -91,59 +97,70 @@ class CompatibleIoDriver implements IIoDriver
      */
     public function waitEvents(int $p_timeout = 0): array|false
     {
-        $r = $this->sockets;
-        $w = null;
-        $e = null;
-        $w_ret = @socket_select($r, $w, $e, 0, $p_timeout * 1000);
-        if($w_ret === false)
+        $r = [];
+        if($this->await_connection_id !== null)
         {
-            return false;
+            $r[] = $this->sockets[$this->await_connection_id];
+            $w = null;
+            $e = null;
+            $w_ret = @socket_select($r, $w, $e, 0, $p_timeout * 1000);
+            if($w_ret === false)
+            {
+                return false;
+            }
         }
         $ret = [];
-        foreach($r as $chg)
+        $r_cnt = count($r);
+        if($r_cnt > 0)
         {
-            // ソケットの接続IDを取り出す
-            $cid = null;
-            foreach($this->sockets as $no => $soc)
-            {
-                if($chg === $soc)
-                {
-                    $cid = $no;
-                    break;
-                }
-            }
-
-            $type = 'read';
-            $data = '';
-            $bytes = 0;
-            $error = 0;
-            $len = $this->manager->ioRecv($cid, $data);
-            if($len === null)
-            {
-                // 互換モードではアクセプト時にnullが返される
-            }
-            else
-            if($len === false)
-            {
-                $type = 'error';
-            }
-            else
-            if($len === 0)
-            {
-                $type = 'disconnect';
-            }
-            else
-            {
-                $bytes = $len;
-            }
             $ret[] = [
-                'cid'        => $cid,
-                'sock'       => $chg,
-                'type'       => $type,
-                'bytes'      => $bytes,
-                'error_code' => $error,
-                'data'       => $data
+                'cid'        => $this->await_connection_id,
+                'sock'       => $this->sockets[$this->await_connection_id],
+                'type'       => 'read',
+                'bytes'      => 0,
+                'error_code' => 0,
+                'data'       => ''
             ];
+        }
+        else
+        {
+            $sockets = $this->sockets;
+            unset($sockets[$this->await_connection_id]);
+            foreach($sockets as $cid => $soc)
+            {
+                $type = 'read';
+                $data = '';
+                $bytes = 0;
+                $error = 0;
+                $len = $this->manager->ioRecv($cid, $data);
+                if($len === null)
+                {
+                    // 互換モードではアクセプト時にnullが返される
+                    continue;
+                }
+                else
+                if($len === false)
+                {
+                    $type = 'error';
+                }
+                else
+                if($len === 0)
+                {
+                    $type = 'disconnect';
+                }
+                else
+                {
+                    $bytes = $len;
+                }
+                $ret[] = [
+                    'cid'        => $cid,
+                    'sock'       => $soc,
+                    'type'       => $type,
+                    'bytes'      => $bytes,
+                    'error_code' => $error,
+                    'data'       => $data
+                ];
+            }
         }
         return $ret;
     }

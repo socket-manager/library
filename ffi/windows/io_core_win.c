@@ -4,6 +4,10 @@
 #include <mswsock.h>
 #include <stdint.h>
 
+#if defined(DBG_WRAPPER) || defined(DBG_OUTPUT)
+#include <stdio.h>
+#endif
+
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -192,7 +196,7 @@ static io_fd_entry *io_create_entry(io_context *ctx, SOCKET fd)
         return NULL;
     }
 
-    e->recv_buf = malloc(ctx->recv_buf_size);
+    e->recv_buf = (char *)malloc(ctx->recv_buf_size);
     if (e->recv_buf == NULL) {
         free(e);
         free(node);
@@ -343,18 +347,6 @@ void io_detach_entry(io_context *ctx, SOCKET fd)
 
     // ソケットを閉じる
     closesocket(e->fd);
-
-    // fd_map から削除
-    io_remove_from_fd_map(ctx, e->fd);
-
-    // fd_list_head から削除
-    io_remove_from_fd_list(ctx, e);
-
-    // メモリ解放
-    if (e->recv_buf) {
-        free(e->recv_buf);
-    }
-    free(e);
 }
 
 /* read readiness 監視用の「0 バイト WSARecv」を発行 */
@@ -759,28 +751,6 @@ int io_registerListen(io_context *ctx, int fd)
         }
     }
 
-    // ------------------------------------------------------------
-    // IOCP / AcceptEx ウォームアップ
-    // ------------------------------------------------------------
-    {
-        // ListenFD のローカルアドレスを取得
-        struct sockaddr_in addr;
-        int addrlen = sizeof(addr);
-        if (getsockname(s, (struct sockaddr *)&addr, &addrlen) == 0) {
-
-            // ダミー接続用ソケット
-            SOCKET warm = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
-            if (warm != INVALID_SOCKET) {
-
-                // ノンブロッキングにしない（同期 connect の方が確実）
-                connect(warm, (struct sockaddr *)&addr, sizeof(addr));
-
-                // 即 close（AcceptEx が完了し IOCP が初期化される）
-                closesocket(warm);
-            }
-        }
-    }
-
     return 0;
 }
 
@@ -882,8 +852,6 @@ int io_unregister(io_context *ctx, int fd)
         }
     }
 
-    /* ソケットクローズは PHP 側で行う前提 */
-
     /* fd_map から削除しつつ、io_fd_entry もここで解放 */
     io_detach_entry(ctx, s);
 
@@ -938,15 +906,8 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
 
         SOCKET s = (SOCKET)key;
 
-        io_lookup_result r = io_get_entry(ctx, s);
-        // fd → entry を取得
-        io_fd_entry *e = r.entry;
-        int slot = r.index;
-
-        // 既に無効状態の場合はスキップ
-        if (e == NULL || !e->active) {
-            return events->count;
-        }
+        io_fd_entry *e = NULL;
+        int slot = -1;
 
         io_event *ev = &events->events[events->count++];
         ev->bytes      = (size_t)bytes;
@@ -957,17 +918,40 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
 
         if (!ok) {
             DWORD err = GetLastError();
-            if ((int)err == 995) {
-                continue;
-            }
 
-            // キューに何もない
+            // keyは未定義
             if (ov == NULL) {
                 // タイムアウト判定
                 if (timeout_ms >= 0 && now_ms() >= deadline_ms) {
                     break;
                 }
                 // タイムアウトしていないなら、もう一度ループに戻る
+                continue;
+            }
+
+            // fd → entry を取得
+            io_lookup_result r = io_get_entry(ctx, s);
+            e = r.entry;
+            slot = r.index;
+
+            // 既に無効状態の場合はスキップ
+            if (e == NULL || !e->active) {
+                continue;
+            }
+
+            if ((int)err == ERROR_OPERATION_ABORTED) {
+                // fd_map から削除
+                io_remove_from_fd_map(ctx, e->fd);
+
+                // fd_list_head から削除
+                io_remove_from_fd_list(ctx, e);
+
+                // メモリ解放
+                if (e->recv_buf) {
+                    free(e->recv_buf);
+                }
+                free(e);
+                events->count--;
                 continue;
             }
 
@@ -987,6 +971,21 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
 
             ev->error_code = (int)err;
             e->active      = 0;     // もう 0 バイト recv は投げない
+            continue;
+        }
+
+        if (ov == NULL) {
+            // keyが未定義のためスキップ
+            continue;
+        }
+
+        // fd → entry を取得
+        io_lookup_result r = io_get_entry(ctx, s);
+        e = r.entry;
+        slot = r.index;
+
+        // 既に無効状態の場合はスキップ
+        if (e == NULL || !e->active) {
             continue;
         }
 
@@ -1032,7 +1031,7 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
         if (e->is_udp && !e->is_listen && ov == &e->ov_read) {
 
             if (e->is_udp_handshake) {
-                udp_accept_t *pkt = malloc(sizeof(udp_accept_t) + bytes);
+                udp_accept_t *pkt = (udp_accept_t *)malloc(sizeof(udp_accept_t) + bytes);
                 if (!pkt) {
                     ev->event_type = IO_EVENT_ERROR;
                     ev->error_code = ERROR_NOT_ENOUGH_MEMORY;
@@ -1084,9 +1083,11 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
 
         /* listen ソケットの AcceptEx 完了かどうかを判定 */
         if (!e->is_udp && e->is_listen && slot >= 0 && ov == &e->ov_accept[slot]) {
+
             // AcceptEx 後の必須処理
             if (setsockopt(e->accept_sock[slot], SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT,
                         (char *)&e->fd, sizeof(e->fd)) == SOCKET_ERROR) {
+
                 DWORD err = WSAGetLastError();
                 ev->event_type = IO_EVENT_ERROR;
                 ev->error_code = (int)err;
@@ -1126,6 +1127,7 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
         if (ov == &e->ov_read) {
 
             if (bytes == 0) {
+
                 // FIN 受信（正常切断）
                 ev->event_type = IO_EVENT_DISCONNECT;
                 e->active = 0;

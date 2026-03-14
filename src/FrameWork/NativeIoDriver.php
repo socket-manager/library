@@ -223,11 +223,12 @@ class NativeIoDriver implements IIoDriver
 
                 // データ（空パケットなら data_len = 0）
                 $bytes = (int)$pkt->data_len;
-                $cdata  = ($bytes > 0)
-                    ? $this->ffi->cast('char *', $pkt->data)
-                    // ? FFI::string($pkt->data, $bytes)
-                    : '';
-                $data = FFI::string($cdata, $pkt->data_len);
+                if ($bytes > 0) {
+                    $cdata = $this->ffi->cast('char *', $pkt->data);
+                    $data  = FFI::string($cdata, $bytes);
+                } else {
+                    $data  = '';
+                }
 
                 // PHP 側で free する必要がある（C 側 malloc）
                 $this->ffi->io_free($pkt);
@@ -248,6 +249,7 @@ class NativeIoDriver implements IIoDriver
             else
             {
                 $type = 'unknown';
+                continue;
             }
 
             $ret[] = [

@@ -1689,6 +1689,10 @@ class SocketManager
             else
             if($chg['type'] === 'read')
             {
+                if(!isset($this->descriptors[$chg_cid]))
+                {
+                    continue;
+                }
                 $data = substr($chg['data'], 0, $chg['bytes']);
                 $this->descriptors[$chg_cid]['receiving_buffer']['data'] .= $data;
                 $this->descriptors[$chg_cid]['receiving_buffer']['receiving_size'] += $chg['bytes'];
@@ -1836,17 +1840,15 @@ class SocketManager
                 {
                     // キューの設定がない場合は抜ける
                     $w_ret = $this->cycle_driven_for_protocol->isSetQueue(ProtocolQueueEnum::ACCEPT->value, StatusEnum::START->value);
-                    if($w_ret === false)
+                    if($w_ret === true)
                     {
-                        return true;
-                    }
-
-                    // アクセプト時のキュー名設定
-                    $w_ret = $this->setQueueNameForStart('protocol_names', $des['connection_id'], ProtocolQueueEnum::ACCEPT->value);
-                    if($w_ret === false)
-                    {
-                        $this->logWriter('error', [__METHOD__ => LogMessageEnum::QUEUE_START_FAIL->message($this->lang)]);
-                        return false;
+                        // アクセプト時のキュー名設定
+                        $w_ret = $this->setQueueNameForStart('protocol_names', $des['connection_id'], ProtocolQueueEnum::ACCEPT->value);
+                        if($w_ret === false)
+                        {
+                            $this->logWriter('error', [__METHOD__ => LogMessageEnum::QUEUE_START_FAIL->message($this->lang)]);
+                            return false;
+                        }
                     }
                 }
             }
@@ -1873,7 +1875,8 @@ class SocketManager
             return false;
         }
 
-        $this->iio_driver->unregister(substr($p_cid, 1));
+        $fd = substr($p_cid, 1);
+        $this->iio_driver->unregister($fd);
 
         // ソケットリソースの取得
         $soc = $this->sockets[$p_cid];

@@ -192,4 +192,17 @@ class BufferingProtocol implements IProtocolParameter
         return $w_ret['send_buffer'];
     }
 
+    /**
+     * バッファリング受信データの存在検査
+     * 
+     * @return bool true（存在する） or false（存在しない）
+     */
+    public function isExistReceivingBuffer(): bool
+    {
+        $cid = $this->param->getConnectionId();
+        $w_ret = $this->manager->isExistReceivingBuffer($cid);
+
+        return $w_ret;
+    }
+
 }

@@ -823,7 +823,7 @@ class SocketManager
      * 
      * @param string $p_kind 取得対象種別（'protocol_names' or 'command_names'）
      * @param string $p_cid 接続ID
-     * @return ?string キュー名 or null（なし）
+     * @return ?string ステータス名 or null（なし）
      */
     public function getStatusName(string $p_kind, string $p_cid): ?string
     {
@@ -836,7 +836,7 @@ class SocketManager
      * 
      * @param string $p_kind 設定対象種別（'protocol_names' or 'command_names'）
      * @param string $p_cid 接続ID
-     * @param ?string $p_name キュー名 or null（なし）
+     * @param ?string $p_name ステータス名 or null（なし）
      */
     public function setStatusName(string $p_kind, string $p_cid, ?string $p_name)
     {
@@ -2173,6 +2173,28 @@ class SocketManager
         }
 
         return true;
+    }
+
+    /**
+     * バッファリング受信データの存在検査
+     * 
+     * @param string $p_cid 接続ID
+     * @return bool true（存在する） or false（存在しない）
+     */
+    public function isExistReceivingBuffer(string $p_cid): bool
+    {
+        // ディスクリプタが存在しなければ抜ける
+        if(!isset($this->descriptors[$p_cid]))
+        {
+            return false;
+        }
+
+        if($this->descriptors[$p_cid]['receiving_buffer']['receiving_size'] > 0)
+        {
+            return true;
+        }
+
+        return false;
     }
 
     /**

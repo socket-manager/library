@@ -76,4 +76,12 @@ interface IProtocolParameter
      * @return mixed 送信データ or null（データなし）
      */
     public function getSendData();
-}
+
+    /**
+     * バッファリング受信データの存在検査
+     * 
+     * @return bool true（存在する） or false（存在しない）
+     */
+    public function isExistReceivingBuffer(): bool;
+
+    }

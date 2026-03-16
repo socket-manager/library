@@ -2283,7 +2283,45 @@ class SocketManager
                 $w_ret = @socket_recvfrom($soc, $buf, $size, 0, $from, $port);
                 if($w_ret === false)
                 {
-                    $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
+                    $this->descriptors[$p_cid]['read_event'] = false;
+                    $w_ret = LogMessageEnum::SOCKET_ERROR->array($soc);
+                    if($w_ret['code'] === self::SOCKET_ERROR_READ_RETRY)
+                    {
+                        return null;
+                    }
+
+                    // ソケット操作を完了できなかった
+                    if($w_ret['code'] === self::SOCKET_ERROR_COULDNT_COMPLETED)
+                    {
+                        return null;
+                    }
+
+                    // 接続中の送受信
+                    if($w_ret['code'] === self::SOCKET_ERROR_SENDING_WHILE_CONNECTED)
+                    {
+                        return null;
+                    }
+
+                    // 相手からの切断を判定
+                    $shutdown = false;
+                    foreach(self::SOCKET_ERROR_PEER_SHUTDOWN as $cod)
+                    {
+                        if($w_ret['code'] === $cod)
+                        {
+                            $shutdown = true;
+                        }
+                    }
+                    if($shutdown === true)
+                    {
+                        // 緊急停止時コールバックを実行
+                        $callback = $this->emergency_callback;
+                        if($callback !== null)
+                        {
+                            $callback($this->unit_parameter);
+                        }
+                        return 0;
+                    }
+                    $this->logWriter('notice', [__METHOD__ => $w_ret['message']]);
                     return false;
                 }
 

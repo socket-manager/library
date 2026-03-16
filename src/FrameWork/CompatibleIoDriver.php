@@ -135,7 +135,6 @@ class CompatibleIoDriver implements IIoDriver
                 $len = $this->manager->ioRecv($cid, $data);
                 if($len === null)
                 {
-                    // 互換モードではアクセプト時にnullが返される
                     continue;
                 }
                 else

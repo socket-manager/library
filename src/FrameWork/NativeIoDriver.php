@@ -162,6 +162,8 @@ class NativeIoDriver implements IIoDriver
                 {
                     $bytes = (int)$ev->bytes;
                     $data = FFI::string($ev->user_data, (int)$ev->bytes);
+                    // C 側で malloc した per-event バッファを解放
+                    $this->ffi->io_free($ev->user_data);
                 }
                 else
                 {

@@ -1059,10 +1059,19 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
                     continue;
                 }
 
+                char *buf = (char *)malloc(bytes);
+                if (!buf) {
+                    ev->event_type = IO_EVENT_ERROR;
+                    ev->error_code = ERROR_NOT_ENOUGH_MEMORY;
+                    e->active      = 0;
+                    continue;
+                }
+                memcpy(buf, e->recv_buf, bytes);
+
                 // 通常の UDP データ受信
                 ev->event_type = IO_EVENT_READ;
-                ev->bytes      = bytes;
-                ev->user_data  = e->recv_buf;
+                ev->bytes      = (size_t)bytes;
+                ev->user_data  = buf;
 
                 if (e->active) {
                     io_post_recv(ctx, e);
@@ -1134,10 +1143,23 @@ int io_select(io_context *ctx, int timeout_ms, void *events_ptr)
                 continue;
             }
 
+            char *buf = (char *)malloc(bytes);
+            if (!buf) {
+                ev->event_type = IO_EVENT_ERROR;
+                ev->error_code = ERROR_NOT_ENOUGH_MEMORY;
+                e->active      = 0;
+                continue;
+            }
+            memcpy(buf, e->recv_buf, bytes);
+
+            ev->event_type = IO_EVENT_READ;
+            ev->bytes      = (size_t)bytes;
+            ev->user_data  = buf;
+
             // 通常のデータ受信
             ev->event_type = IO_EVENT_READ;
-            ev->bytes = bytes;
-            ev->user_data = e->recv_buf;
+            ev->bytes      = (size_t)bytes;
+            ev->user_data  = buf;
 
             // 次の recv を発行
             if (e->active) {

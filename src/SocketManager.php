@@ -1293,7 +1293,7 @@ class SocketManager
                     }
 
                     // ソケットディスクリプタの生成
-                    $w_ret = $this->createDescriptor($soc, $p_udp, false, true);
+                    $w_ret = $this->createDescriptor($soc, null, false, true);
                     if($w_ret === false)
                     {
                         $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_CREATE_FAIL->message($this->lang)]);
@@ -1402,6 +1402,7 @@ class SocketManager
             ];
             $this->setProperties($des['connection_id'], ['udp_peers' => $prop]);
 
+            socket_connect($soc, $prop['host'], $prop['port']);
             return true;
         }
 
@@ -1532,7 +1533,12 @@ class SocketManager
         }
 
         // ソケットディスクリプタの生成
-        $w_ret = $this->createDescriptor($soc, true, true);
+        $udp = null;
+        if(!(AdaptiveIoDriverFactory::$mode === AdaptiveIoDriverFactory::MODE_IO_NATIVE && PHP_OS_FAMILY === 'Windows'))
+        {
+            $udp = true;
+        }
+        $w_ret = $this->createDescriptor($soc, $udp, true);
         if($w_ret === false)
         {
             $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_CREATE_FAIL->message($this->lang)]);
@@ -1646,6 +1652,8 @@ class SocketManager
                     'port' => $remote_port
                 ];
                 $this->setProperties($des['connection_id'], ['udp_peers' => $prop]);
+
+                socket_connect($soc, $prop['host'], $prop['port']);
                 continue;
             }
             else
@@ -1659,6 +1667,8 @@ class SocketManager
                     'port' => $port
                 ];
                 $this->setProperties($chg_cid, ['udp_peers' => $prop]);
+
+                socket_connect($this->sockets[$chg_cid], $prop['host'], $prop['port']);
 
                 // キューの設定がない場合は抜ける
                 $w_ret = $this->cycle_driven_for_protocol->isSetQueue(ProtocolQueueEnum::CONNECT->value, StatusEnum::START->value);
@@ -1702,7 +1712,7 @@ class SocketManager
             $flg_accept = false;
             $flg_connect = 1;
             $w_ret = $this->getProperties($chg_cid, ['udp']);
-            if($w_ret !== false && $w_ret['udp'] === true)
+            if($w_ret !== false && ($w_ret === null || $w_ret['udp'] === true))
             {
                 $flg_connect = 2;
             }
@@ -1833,7 +1843,8 @@ class SocketManager
                         'host' => $from,
                         'port' => $port
                     ];
-                    $this->setProperties($des['connection_id'], ['udp_peers' => $prop]);
+                    $this->setProperties($des['connection_id'], ['udp_peers' => $prop, 'udp' => null]);
+                    socket_connect($soc, $prop['host'], $prop['port']);
                 }
 
                 if($des !== null)
@@ -2272,6 +2283,10 @@ class SocketManager
         // データ受信
         $p_recv = '';
         $prop = $this->getProperties($p_cid, ['udp']);
+        if($prop === null)
+        {
+            $prop['udp'] = null;
+        }
         if($prop['udp'] === true)
         {
             $prop = $this->getProperties($p_cid, ['udp_peers']);
@@ -2576,7 +2591,14 @@ class SocketManager
 
         // 送信処理
         $prop = $this->getProperties($p_cid, ['udp']);
-        $udp = $prop['udp'];
+        if($prop === null)
+        {
+            $udp = null;
+        }
+        else
+        {
+            $udp = $prop['udp'];
+        }
         if($udp === true)
         {
             // 送信先を取得
@@ -3010,17 +3032,17 @@ class SocketManager
      * ソケットディスクリプタの生成
      * 
      * @param Socket $p_socket ソケットリソース
-     * @param bool $p_udp UDPフラグ
+     * @param ?bool $p_udp UDPフラグ
      * @param bool $p_listen Listenポートフラグ
      * @param bool $p_is_client クライアントフラグ
      * @return array|bool ディスクリプタ or false（失敗）
      */
-    private function createDescriptor(Socket $p_socket, bool $p_udp = false, bool $p_listen = false, bool $p_is_client = false)
+    private function createDescriptor(Socket $p_socket, ?bool $p_udp = false, bool $p_listen = false, bool $p_is_client = false)
     {
         $id = null;
         if($p_listen === true)
         {
-            if($p_udp && $p_listen && AdaptiveIoDriverFactory::$mode === AdaptiveIoDriverFactory::MODE_IO_NATIVE && PHP_OS_FAMILY === 'Windows')
+            if($p_udp === null && $p_listen && AdaptiveIoDriverFactory::$mode === AdaptiveIoDriverFactory::MODE_IO_NATIVE && PHP_OS_FAMILY === 'Windows')
             {
                 $id = $this->iio_driver->registerUdpListen($p_socket);
             }
@@ -3031,7 +3053,12 @@ class SocketManager
         }
         else
         {
-            $id = $this->iio_driver->register($p_socket, $p_udp, $p_is_client);
+            $flg = $p_udp;
+            if($flg === null)
+            {
+                $flg = true;
+            }
+            $id = $this->iio_driver->register($p_socket, $flg, $p_is_client);
         }
 
         // ソケットの接続IDを生成

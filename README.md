@@ -82,6 +82,7 @@ https://socket-manager.github.io/document/pure-tcp-scale.html
 - [new-project](https://github.com/socket-manager/new-project) : 新規プロジェクト開発環境
 - [contents-project](https://github.com/socket-manager/contents-project) : マインクラフト専用コンテンツ環境
 - [rest-api](https://github.com/socket-manager/rest-api) : **REST-API / RESTful-API サーバー開発環境（PSR-7準拠）**
+- [launcher](https://github.com/socket-manager/launcher) : SOCKET-MANAGER Launcher （GUI & CLI ランチャー）
 
 ---
 

@@ -1,0 +1,274 @@
+<?php
+/**
+ * ライブラリファイル
+ * 
+ * I/O ドライバ抽象化クラス関連ファイル
+ */
+
+namespace SocketManager\Library\FrameWork\PureUdp;
+
+use FFI;
+use RuntimeException;
+
+use SocketManager\Library\CoreSocketManager;
+
+
+/**
+ * Native I/O Driver クラス
+ * 
+ * ネイティブ I/O ドライバによってハイパフォーマンスモードで動作します
+ */
+class NativeIoDriver implements IIoDriver
+{
+    private ?bool $server = null;       // サーバーロールフラグ
+
+    private $socket;                    // サーバーソケットリソース
+    private array $sockets;             // クライアントソケットリソースの配列
+
+    private FFI $ffi;
+
+    private CoreSocketManager $manager; // CoreSocketManagerインスタンス
+
+    /** @var FFI\CData $ctx */
+    private $ctx;
+
+    /** @var FFI\CData $events */
+    private $events;
+
+    /**
+     * コンストラクタ
+     * 
+     * @param FFI $p_ffi FFI インスタンス
+     * @param CoreSocketManager $p_manager CoreSocketManagerインスタンス
+     * @param int $p_recv_buf_size 受信バッファサイズ
+     */
+    public function __construct(FFI $p_ffi, CoreSocketManager $p_manager, int $p_recv_buf_size)
+    {
+        $this->ffi     = $p_ffi;
+        $this->manager = $p_manager;
+        $this->ctx    = $this->ffi->new("io_context", false);
+        $this->events = $this->ffi->new("io_event_list", false);
+        $ret = $this->ffi->io_core_init(FFI::addr($this->ctx), $p_recv_buf_size);
+        if($ret !== 0)
+        {
+            // ここは既存のエラーハンドリング方針に合わせて例外 or ログなど
+            throw new RuntimeException('io_core_init failed: '.$ret);
+        }
+    }
+
+    /**
+     * Server Role の設定
+     * 
+     * @param $p_sock ソケットリソース
+     */
+    public function setRoleServer($p_sock): void
+    {
+        $this->socket = $p_sock;
+        $this->server = true;
+    }
+
+    /**
+     * Client Role の設定
+     * 
+     * @param array $p_socs ソケットリソースリスト
+     */
+    public function setRoleClient(array &$p_socs): void
+    {
+        $this->sockets = &$p_socs;
+        $this->server = false;
+    }
+
+    /**
+     * ソケットハンドルを I/O ドライバへ登録依頼する
+     * 
+     * @param $p_sock ソケットリソース
+     * @return int ソケットハンドル
+     */
+    public function register($p_sock): int
+    {
+        $handle = socketsfd($p_sock);
+        $this->ffi->io_register(FFI::addr($this->ctx), $handle);
+        return $handle;
+    }
+
+    /**
+     * ソケットハンドルを I/O ドライバへ解除依頼する
+     * 
+     * @param $p_handle ソケットハンドル
+     */
+    public function unregister($p_handle): void
+    {
+        $this->ffi->io_unregister(FFI::addr($this->ctx), $p_handle);
+    }
+
+    /**
+     * イベント待機
+     * 
+     * @param int $p_timeout タイムアウト時間（ms）
+     * @return array|false 発生したイベントの配列 or false（失敗）
+     */
+    public function waitEvents(int $p_timeout = 0): array|false
+    {
+        $ret = $this->ffi->io_select(FFI::addr($this->ctx), $p_timeout, FFI::addr($this->events));
+        if($ret < 0)
+        {
+            return false;
+        }
+        if($ret === 0)
+        {
+            return [];
+        }
+
+        // PHP 配列に変換
+        return $this->convertEvents($this->events);
+    }
+
+    /**
+     * C 側の io_event_list 元にAccept処理を実行
+     *
+     * @param FFI\CData $p_events io_event_list*
+     * @return array
+     */
+    private function convertEvents(FFI\CData $p_events): array
+    {
+        $ret = [];
+
+        for($i = 0; $i < $p_events->count; $i++)
+        {
+            $cid = null;
+            $soc = null;
+            $ev = $p_events->events[$i];
+            if($this->server)
+            {
+                $soc = $this->socket;
+            }
+            else
+            {
+                $cid = '#'.$ev->handle;
+                $soc = $this->sockets[$cid];
+            }
+
+            // event_type を文字列へ変換
+            $type = null;
+            $host = $port = null;
+            $data = '';
+            $bytes = 0;
+            if($ev->event_type === 1)
+            {
+                $type = 'read';
+
+                $pkt = $this->ffi->cast("udp_accept_t*", $ev->user_data);
+
+                $host   = FFI::string($pkt->ip);
+                $port   = $pkt->port;
+                $bytes  = $pkt->data_len;
+                $data   = ''; // 初期値として空文字を設定
+
+                if($bytes > 0)
+                {
+                    $data_p = $this->ffi->cast("char*", $pkt->data);
+                    $data   = FFI::string($data_p, $bytes);
+                }
+
+                // C 側で malloc した per-event バッファを解放
+                $this->ffi->io_free($ev->user_data);
+
+                // @@@ioRecvの廃止
+                // if((int)$ev->bytes > 0)
+                // {
+                //     $pkt = $this->ffi->cast("udp_accept_t*", $ev->user_data);
+
+                //     $host  = FFI::string($pkt->ip);
+                //     $port  = $pkt->port;
+                //     $bytes = $pkt->data_len;
+                //     $data_p = $this->ffi->cast("char*", $pkt->data);
+                //     $data   = FFI::string($data_p, $bytes);
+
+                //     // C 側で malloc した per-event バッファを解放
+                //     $this->ffi->io_free($ev->user_data);
+                // }
+                // else
+                // {
+                //     $len = $this->manager->ioRecv($soc, $data, $host, $port);
+                //     if($len === null)
+                //     {
+                //         continue;
+                //     }
+                //     else
+                //     if($len === false)
+                //     {
+                //         $type = 'error';
+                //     }
+                //     else
+                //     if($len === 0)
+                //     {
+                //         $type = 'disconnect';
+                //     }
+                //     else
+                //     {
+                //         $bytes = $len;
+                //     }
+                // }
+            }
+            else
+            if($ev->event_type === 2)
+            {
+                $type = 'write';
+            }
+            else
+            if($ev->event_type === 3)
+            {
+                $type = 'error';
+            }
+            else
+            if($ev->event_type === 4)
+            {
+                $type = 'disconnect';
+            }
+            else
+            {
+                $type = 'unknown';
+                continue;
+            }
+
+            $ret[] = [
+                'cid'        => $cid,
+                'sock'       => $soc,
+                'type'       => $type,
+                'bytes'      => $bytes,
+                'error_code' => (int)$ev->error_code,
+                'data'       => $data,
+                'host'       => $host,
+                'port'       => $port
+            ];
+        }
+
+        return $ret;
+    }
+
+    /**
+     * ソケットのアドレス情報取得
+     * 
+     * @param $p_handle ソケットハンドル
+     * @param string &$p_ip_buf IPアドレス格納エリア
+     * @param int &$p_port ポート番号格納エリア
+     * @return bool true（成功） or false（失敗）
+     */
+    public function getSockName($p_handle, string &$p_ip_buf, int &$p_port): bool
+    {
+        // アンマネージドにするか@@@
+        // $ip_buf = $this->ffi->new("char[22]");
+        // $port_ptr = $this->ffi->new("unsigned short");
+
+        // $ret = $this->ffi->io_getsockname(FFI::addr($this->ctx), $p_handle, $ip_buf, FFI::addr($port_ptr));
+        // if($ret < 0)
+        // {
+        //     return false;
+        // }
+
+        // $p_ip_buf = FFI::string($ip_buf);
+        // $p_port = $port_ptr->cdata;
+
+        return true;
+    }
+}

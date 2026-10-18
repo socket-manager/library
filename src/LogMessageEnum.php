@@ -112,6 +112,21 @@ enum LogMessageEnum
      */
     case RECEIVING_DURING_DOWNTIME;
 
+    /**
+     * @var IO エラー
+     */
+    case IO_ERROR;
+
+    /**
+     * @var パケット制限超過
+     */
+    case PACKETS_LIMIT_OVER;
+
+    /**
+     * @var 名前解決に失敗
+     */
+    case NAME_RESOLUTION_FAILURE;
+
 
     //--------------------------------------------------------------------------
     // メソッド
@@ -146,6 +161,9 @@ enum LogMessageEnum
                 self::SEND_BUFFER_FULL => '送信バッファが一杯',
                 self::RECEIVE_BUFFER_FULL => '受信バッファが一杯',
                 self::RECEIVING_DURING_DOWNTIME => 'ダウンタイム中の受信',
+                self::IO_ERROR => 'IO エラー',
+                self::PACKETS_LIMIT_OVER => 'パケット制限超過',
+                self::NAME_RESOLUTION_FAILURE => '名前解決に失敗',
                 default => '存在しないEnum値です'
             };
         }
@@ -171,6 +189,9 @@ enum LogMessageEnum
                 self::SEND_BUFFER_FULL => 'Send buffer full',
                 self::RECEIVE_BUFFER_FULL => 'Receive buffer is full',
                 self::RECEIVING_DURING_DOWNTIME => 'Receiving during downtime',
+                self::IO_ERROR => 'IO error',
+                self::PACKETS_LIMIT_OVER => 'packets limit over',
+                self::NAME_RESOLUTION_FAILURE => 'Name resolution failure',
                 default => 'Enum value that does not exist'
             };
         }

@@ -15,11 +15,9 @@ use SocketManager\Library\FrameWork\PureUdp\AdaptiveIoDriverFactory;
 use SocketManager\Library\FrameWork\PureUdp\IIoDriver;
 use SocketManager\Library\PureUdp\Engine;
 use SocketManager\Library\PureUdp\EngineQueueEnum;
-use SocketManager\Library\PureUdp\UnitExceptionEnum;
 use SocketManager\Library\PureUdp\SocketManagerParameter;
 use SocketManager\Library\PureUdp\BufferingProtocol;
 
-use SocketManager\Library\Traits\PureUdpMultiSocketBehavior;
 use SocketManager\Library\Traits\PureUdpHybridSocketBehavior;
 
 
@@ -32,8 +30,6 @@ use SocketManager\Library\Traits\PureUdpHybridSocketBehavior;
  */
 class PureUdpManager extends CoreSocketManager
 {
-    // @@@
-    // use PureUdpMultiSocketBehavior;
     use PureUdpHybridSocketBehavior;
 
     //--------------------------------------------------------------------------
@@ -168,7 +164,7 @@ class PureUdpManager extends CoreSocketManager
         $protocol = new BufferingProtocol();
 
         // UNITパラメータの設定
-        $this->unit_parameter = new SocketManagerParameter($this->lang);
+        $this->unit_parameter = new SocketManagerParameter();
         $this->unit_parameter->setProtocolInterface($protocol);
         $this->unit_parameter->setSocketManager($this);
         $this->unit_parameter->setLanguage($this->lang);

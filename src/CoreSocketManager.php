@@ -36,7 +36,7 @@ abstract class CoreSocketManager
     protected const SOCKET_ERROR_PEER_SHUTDOWN = [10053, 10054, 104];
 
     /**
-     * ソケット受信のリトライが必要
+     * ソケット操作のリトライが必要
      * （Resource temporarily unavailable）
      */
     protected const SOCKET_ERROR_READ_RETRY = 11;
@@ -300,7 +300,10 @@ abstract class CoreSocketManager
      */
     public function setEngineUnits(IEntryUnits $p_entry)
     {
-        $this->cycle_driven_for_engine = new CycleDrivenManager();
+        if($this->cycle_driven_for_engine === null)
+        {
+            $this->cycle_driven_for_engine = new CycleDrivenManager();
+        }
 
         // キューリストの取得
         $ques = $p_entry->getQueueList();
@@ -923,8 +926,49 @@ abstract class CoreSocketManager
         }
 
         $this->descriptors[$p_cid]['restrict_unit_kind'] = $p_kind;
+
+        return true;
     }
 
+    /**
+     * キューの開始
+     * 
+     * @param UnitKindEnum $p_kind UNIT種別
+     * @param string $p_cid 接続ID
+     * @param string $p_que キュー名
+     * @return bool true（成功） or false（失敗）
+     */
+    public function queueStart(UnitKindEnum $p_kind, string $p_cid, string $p_que): bool
+    {
+        $cycle_driven_manager = null;
+        switch($p_kind)
+        {
+            case UnitKindEnum::PROTOCOL:
+                $cycle_driven_manager = $this->cycle_driven_for_protocol;
+                break;
+            case UnitKindEnum::COMMAND:
+                $cycle_driven_manager = $this->cycle_driven_for_command;
+                break;
+            case UnitKindEnum::ENGINE:
+                $cycle_driven_manager = $this->cycle_driven_for_engine;
+                break;
+        }
+
+        // キューの設定がない場合は抜ける
+        $w_ret = $cycle_driven_manager->isSetQueue($p_que, StatusEnum::START->value);
+        if($w_ret === true)
+        {
+            // キュー名設定
+            $w_ret = $this->setQueueNameForStart($p_kind, $p_cid, $p_que);
+            if($w_ret === false)
+            {
+                $this->logWriter('error', [__METHOD__ => LogMessageEnum::QUEUE_START_FAIL->message($this->lang)]);
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     //--------------------------------------------------------------------------
     // システムコール関連
@@ -1277,6 +1321,16 @@ abstract class CoreSocketManager
     }
 
     /**
+     * 接続制限数を取得
+     * 
+     * @return int 接続制限数
+     */
+    public function getLimitConnection(): int
+    {
+        return $this->limit_connection;
+    }
+
+    /**
      * ログ出力
      * 
      * SocketManagerで使用しているチャンネル名と同じになる
@@ -1413,7 +1467,7 @@ abstract class CoreSocketManager
             // アライブチェック
             if($alive_check === 0)  // プロトコル部実行中のタイムアウトを検査
             {
-                if($flg_exec === true && $p_alive_interval > 0)
+                if(($flg_exec === true || $flg_exec === null) && $p_alive_interval > 0) // プロトコル部実行制限中であってもチェックを行う
                 {
                     // 実行中タイムアウト判定
                     $dif = time() - $timestamp;

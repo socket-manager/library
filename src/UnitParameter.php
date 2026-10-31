@@ -415,7 +415,7 @@ class UnitParameter implements IUnitParameter
         }
 
         // ユーザープロパティの設定
-        $w_ret = $this->manager->setProperties($cid, ['recv_buffer' => null]);
+        $w_ret = $this->manager->setProperties($this->cid, ['recv_buffer' => null]);
         if($w_ret === false)
         {
             throw new UnitException(
@@ -720,8 +720,22 @@ class UnitParameter implements IUnitParameter
     /**
      * 緊急停止（即時切断）
      */
-    final public function emergencyShutdown()
+    // final public function emergencyShutdown()    // @@@
+    // {
+    //     // 例外発行
+    //     throw new UnitException(
+    //         UnitExceptionEnum::ECODE_EMERGENCY_SHUTDOWN->message($this->lang),
+    //         UnitExceptionEnum::ECODE_EMERGENCY_SHUTDOWN->value,
+    //         $this
+    //     );
+    // }
+    final public function emergencyShutdown(?string $p_cid = null)
     {
+        if($p_cid !== null)
+        {
+            $this->manager->shutdown($p_cid);
+            $this->manager->throwBreak();
+        }
         // 例外発行
         throw new UnitException(
             UnitExceptionEnum::ECODE_EMERGENCY_SHUTDOWN->message($this->lang),
@@ -808,6 +822,16 @@ class UnitParameter implements IUnitParameter
     final public function getClientCount(): int
     {
         return $this->manager->getClientCount();
+    }
+
+    /**
+     * 接続制限数を取得
+     * 
+     * @return int 接続制限数
+     */
+    final public function getLimitConnection(): int
+    {
+        return $this->manager->getLimitConnection();
     }
 
     /**
@@ -914,6 +938,17 @@ class UnitParameter implements IUnitParameter
 
         $p_host = $w_ret['remote']['host'];
         $p_port = $w_ret['remote']['port'];
+    }
+
+    /**
+     * UNIT種別制限の設定
+     * 
+     * @param ?UnitKindEnum $p_kind UNIT種別（null:制限解除）
+     * @return bool true（成功） or false（失敗）
+     */
+    final public function setRestrictUnitKind(?UnitKindEnum $p_kind): bool
+    {
+        return $this->manager->setRestrictUnitKind($p_kind, $this->cid);
     }
 
 }

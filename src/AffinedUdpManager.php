@@ -271,25 +271,6 @@ class AffinedUdpManager extends CoreSocketManager
     //--------------------------------------------------------------------------
 
     /**
-     * リモートホストを基にbindアドレスの自動選択
-     * 
-     * @param string $p_remote_host リモートホスト
-     * @return string bindアドレス
-     */
-    private function selectBindHost(string $p_remote_host): string
-    {
-        // ローカルホスト宛てなら 127.0.0.1
-        if ($p_remote_host === '127.0.0.1' ||
-            $p_remote_host === 'localhost' ||
-            $p_remote_host === '::1') {
-            return '127.0.0.1';
-        }
-
-        // 外部通信なら 0.0.0.0
-        return '0.0.0.0';
-    }
-
-    /**
      * データ受信（IOドライバ用）
      * 
      * 受信バッファサイズ分を受信する

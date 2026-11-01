@@ -56,14 +56,6 @@ trait AffinedUdpBehavior
     abstract public function logWriter(string $p_level, array $p_param);
 
     /**
-     * リモートホストを基にbindアドレスの自動選択
-     * 
-     * @param string $p_remote_host リモートホスト
-     * @return string bindアドレス
-     */
-    abstract private function selectBindHost(string $p_remote_host): string;
-
-    /**
      * 現在のクライアント数を取得
      * 
      * @return int クライアント数
@@ -124,9 +116,9 @@ trait AffinedUdpBehavior
     /**
      * UDPソケット待ち受け
      * 
-     * 引数のホスト名とポート番号の指定があれば、コンストラクタで設定された内容より優先されます
+     * 引数のホストとポート番号の指定があれば、コンストラクタで設定された内容より優先されます
      * 
-     * @param ?string $p_host ホスト名
+     * @param ?string $p_host ホスト
      * @param ?int $p_port ポート番号
      * @return bool true（成功） or false（失敗）
      */
@@ -252,11 +244,12 @@ trait AffinedUdpBehavior
     /**
      * ソケット接続
      * 
-     * @param string $p_host ホスト名
+     * @param string $p_host ホスト
      * @param int $p_port ポート番号
+     * @param string $p_local_host ローカルホスト
      * @return bool true（成功） or false（失敗）
      */
-    public function connect(string $p_host, int $p_port): bool
+    public function connect(string $p_host, int $p_port, string $p_local_host = '127.0.0.1'): bool
     {
         $host = trim($p_host);
         if(!filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4))
@@ -309,11 +302,8 @@ trait AffinedUdpBehavior
             return false;
         }
 
-        // 宛先に応じて bind IP を決定
-        $bind_host = $this->selectBindHost($host);
-
         // bind socket to specified host
-        $w_ret = socket_bind($soc, $bind_host, 0);
+        $w_ret = socket_bind($soc, $p_local_host, 0);
         if($w_ret === false)
         {
             $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
@@ -394,6 +384,13 @@ trait AffinedUdpBehavior
         if($w_ret === false)
         {
             $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_OPTION_SETTING_FAIL->message($this->lang)]);
+            return false;
+        }
+
+        $w_ret = socket_bind($soc, $this->await_host, 0);
+        if($w_ret === false)
+        {
+            $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
             return false;
         }
 

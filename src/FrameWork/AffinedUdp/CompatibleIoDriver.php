@@ -7,7 +7,9 @@
 
 namespace SocketManager\Library\FrameWork\AffinedUdp;
 
+use SocketManager\Library\UnitKindEnum;
 use SocketManager\Library\AffinedUdpManager;
+use SocketManager\Library\AffinedUdp\EngineQueueEnum;
 
 
 /**
@@ -45,8 +47,9 @@ class CompatibleIoDriver implements IIoDriver
     public function registerListen($p_sock): int
     {
         $this->await_socket[] = $p_sock;
-        $this->await_cid = spl_object_id($p_sock);
-        return $this->await_cid;
+        $ret = spl_object_id($p_sock);
+        $this->await_cid = '#'.$ret;
+        return $ret;
     }
 
     /**
@@ -81,7 +84,7 @@ class CompatibleIoDriver implements IIoDriver
     public function waitEvents(int $p_timeout = 0): array|false
     {
         $ret = [];
-        $await_cid = '';
+        $await_cid = null;
         if($this->await_socket !== [])
         {
             $r = $this->await_socket;
@@ -98,7 +101,95 @@ class CompatibleIoDriver implements IIoDriver
             }
         }
 
-        return $this->ioRecv($await_cid);
+        if($await_cid !== null)
+        {
+            $type = 'read';
+            $soc = $this->await_socket[0];
+            $buf = '';
+            $host = $port = null;
+            $len = $this->manager->ioRecvFrom($this->await_socket[0], $buf, $host, $port);
+            if($len === false)
+            {
+                $type = 'error';
+            }
+            else
+            if($len === null)
+            {
+            }
+            else
+            {
+                $ret[] = [
+                    'cid'        => $await_cid,
+                    'sock'       => $soc,
+                    'type'       => $type,
+                    'bytes'      => $len,
+                    'error_code' => 0,
+                    'data'       => $buf,
+                    'host'       => $host,
+                    'port'       => $port
+                ];
+            }
+        }
+
+        foreach($this->sockets as $cid => $soc)
+        {
+            if($cid === $await_cid)
+            {
+                continue;
+            }
+            $len = null;
+            $type = 'read';
+            $buf = '';
+            $host = $port = null;
+
+            // エンジンUNITのCONNECTキュー
+            $w_ret = $this->manager->isExecutedQueue(UnitKindEnum::ENGINE, $cid, EngineQueueEnum::CONNECT->value);
+            if($w_ret === true)
+            {
+                $len = $this->manager->ioRecvFrom($soc, $buf, $host, $port);
+            }
+            else
+            {
+                $len = $this->manager->ioRead($soc, $buf);
+                $w_ret = $this->manager->getProperties($cid, ['remote']);
+                if($w_ret === false)
+                {
+                    $len = false;
+                }
+                else
+                {
+                    $host = $w_ret['remote']['host'];
+                    $port = $w_ret['remote']['port'];
+                }
+            }
+
+            if($len === null)
+            {
+                continue;
+            }
+            else
+            if($len === false)
+            {
+                $type = 'error';
+            }
+            else
+            if($len === 0 && $w_ret === false)
+            {
+                $type = 'disconnect';
+            }
+            $ret[] = [
+                'cid'        => $cid,
+                'sock'       => $soc,
+                'type'       => $type,
+                'bytes'      => $len,
+                'error_code' => 0,
+                'data'       => $buf,
+                'host'       => $host,
+                'port'       => $port
+            ];
+        }
+
+        return $ret;
     }
 
     /**
@@ -112,91 +203,5 @@ class CompatibleIoDriver implements IIoDriver
     public function getSockName($p_handle, string &$p_ip_buf, int &$p_port): bool
     {
         return true;    // I/Fを合わせるための実装
-    }
-
-    /**
-     * 受信データをイベントデータへ変換（クライアントポート）
-     * 
-     * @return array|false array:イベントリスト or false:失敗
-     */
-    private function ioRecv(string $p_await_cid): array|false
-    {
-        $ret = [];
-
-        if($p_await_cid === '')
-        {
-            foreach($this->sockets as $cid => $soc)
-            {
-                $type = 'read';
-
-                $buf = $host = $port = null;
-                $len = $this->manager->ioRecv($soc, $buf, $host, $port);
-                if($len === null)
-                {
-                    continue;
-                }
-                else
-                if($len === false)
-                {
-                    $type = 'error';
-                }
-                else
-                if($len === 0)
-                {
-                    $type = 'disconnect';
-                }
-                $ret[] = [
-                    'cid'        => $cid,
-                    'sock'       => $soc,
-                    'type'       => 'read',
-                    'bytes'      => $len,
-                    'error_code' => 0,
-                    'data'       => $buf,
-                    'host'       => $host,
-                    'port'       => $port
-                ];
-            }
-        }
-        else
-        {
-            foreach($this->sockets as $cid => $soc)
-            {
-                if($cid === $p_await_cid)
-                {
-                    continue;
-                }
-
-                $type = 'read';
-
-                $buf = $host = $port = null;
-                $len = $this->manager->ioRecv($soc, $buf, $host, $port);
-                if($len === null)
-                {
-                    continue;
-                }
-                else
-                if($len === false)
-                {
-                    $type = 'error';
-                }
-                else
-                if($len === 0)
-                {
-                    $type = 'disconnect';
-                }
-                $ret[] = [
-                    'cid'        => $cid,
-                    'sock'       => $soc,
-                    'type'       => 'read',
-                    'bytes'      => $len,
-                    'error_code' => 0,
-                    'data'       => $buf,
-                    'host'       => $host,
-                    'port'       => $port
-                ];
-            }
-        }
-
-        return $ret;
     }
 }

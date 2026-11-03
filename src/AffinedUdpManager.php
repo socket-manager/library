@@ -282,7 +282,7 @@ class AffinedUdpManager extends CoreSocketManager
      * @param ?int $p_size 受信サイズ（指定があればデフォルトサイズより優先される）
      * @return int 受信したサイズ or false（失敗） or null（取得できるデータがない） or 0（切断検知）
      */
-    public function ioRecv($p_soc, &$p_buf, ?string &$p_host, ?int &$p_port, ?int $p_size = null): int|null|false
+    public function ioRecvFrom($p_soc, &$p_buf, ?string &$p_host, ?int &$p_port, ?int $p_size = null): int|null|false
     {
         // 受信サイズ決定
         $size = $this->internal_rcvbuf_sz;
@@ -336,6 +336,78 @@ class AffinedUdpManager extends CoreSocketManager
         return $len;
     }
 
+    /**
+     * データ受信（IOドライバ用）
+     * 
+     * 受信バッファサイズ分を受信する
+     * 
+     * ※プロトコルUNITで使用 
+     * 
+     * @param mixed $p_soc ソケットリソース
+     * @param mixed &$p_recv 受信エリア
+     * @param ?int $p_size 受信サイズ（指定があればデフォルトサイズより優先される）
+     * @return int 受信したサイズ or false（失敗） or null（取得できるデータがない） or 0（切断検知）
+     */
+    public function ioRead($p_soc, &$p_recv, ?int $p_size = null)
+    {
+        // 受信サイズ決定
+        $size = $this->internal_rcvbuf_sz;
+        if($p_size !== null)
+        {
+            $size = $p_size;
+        }
+
+        // データ受信
+        $p_recv = '';
+
+        $w_ret = @socket_read($p_soc, $size);
+        if($w_ret === false)
+        {
+            $w_ret = LogMessageEnum::SOCKET_ERROR->array($p_soc);
+            if($w_ret['code'] === self::SOCKET_ERROR_READ_RETRY)
+            {
+                return null;
+            }
+
+            // ソケット操作を完了できなかった
+            if($w_ret['code'] === self::SOCKET_ERROR_COULDNT_COMPLETED)
+            {
+                return null;
+            }
+
+            // 接続中の送受信
+            if($w_ret['code'] === self::SOCKET_ERROR_SENDING_WHILE_CONNECTED)
+            {
+                return null;
+            }
+
+            // 相手からの切断を判定
+            $shutdown = false;
+            foreach(self::SOCKET_ERROR_PEER_SHUTDOWN as $cod)
+            {
+                if($w_ret['code'] === $cod)
+                {
+                    $shutdown = true;
+                }
+            }
+            if($shutdown === true)
+            {
+                return 0;
+            }
+            $this->logWriter('notice', [__METHOD__ => $w_ret['message']]);
+            return false;
+        }
+        if($w_ret === "")
+        {
+            return 0;
+        }
+
+        $p_recv = $w_ret;
+
+        $len = strlen($p_recv);
+        
+        return $len;
+    }
 
     //--------------------------------------------------------------------------
     // 送受信関連（IProtocolParameter用）

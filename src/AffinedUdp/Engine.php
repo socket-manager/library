@@ -130,7 +130,7 @@ class Engine implements IEntryUnits
      */
     private function responsePacket(SocketManagerParameter $p_param)
     {
-        $data = '';
+        $data = null;
         $host = $port = null;
         $size = $this->protocol->recvfrom($data, $host, $port);
         if($size === null)
@@ -139,7 +139,10 @@ class Engine implements IEntryUnits
         }
         if($data === self::UDP_CONNECTION_IDENTIFY)
         {
-            // 宛先固定化の接続
+            if($host === null || $port === null)
+            {
+                return EngineStatusEnum::START->value;
+            }
             $cid = $this->protocol->acceptAffined($host, $port);
             if($cid === false)
             {
@@ -193,7 +196,7 @@ class Engine implements IEntryUnits
      */
     private function recvingPacket(SocketManagerParameter $p_param)
     {
-        $data = '';
+        $data = null;
         $host = $port = null;
         $size = $this->protocol->recvfrom($data, $host, $port);
         if($size === null)
@@ -202,6 +205,10 @@ class Engine implements IEntryUnits
         }
         if($data === self::UDP_CONNECTION_IDENTIFY)
         {
+            if($host === null || $port === null)
+            {
+                return null;
+            }
             $w_ret = $this->protocol->connectAffined($host, $port);
             if($w_ret === false)
             {

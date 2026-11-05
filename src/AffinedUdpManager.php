@@ -256,13 +256,18 @@ class AffinedUdpManager extends CoreSocketManager
     //--------------------------------------------------------------------------
 
     /**
-     * 待ち受けホスト名を取得
+     * 待ち受けソケットを取得
      * 
-     * @return Socket 待ち受けソケットリソース
+     * @return ?Socket 待ち受けソケットリソース
      */
     public function getAwaitSocket()
     {
-        return $this->await_socket;
+        $soc = null;
+        if($this->await_cid !== null)
+        {
+            $soc = $this->sockets[$this->await_cid];
+        }
+        return $soc;
     }
 
 

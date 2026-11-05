@@ -64,12 +64,6 @@ class SocketManagerParameter extends UnitParameter
      */
     final public function getLocalAddr(?string &$p_host, ?int &$p_port): bool
     {
-        if($this->manager->getAwaitSocket() !== null)
-        {
-            $p_host = $this->manager->getAwaitHost();
-            $p_port = $this->manager->getAwaitPort();
-            return true;
-        }
         return $this->manager->getSockName($this->cid, $p_host, $p_port);
     }
 

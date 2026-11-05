@@ -195,30 +195,4 @@ class NativeIoDriver implements IIoDriver
 
         return $ret;
     }
-
-    /**
-     * ソケットのアドレス情報取得
-     * 
-     * @param $p_handle ソケットハンドル
-     * @param string &$p_ip_buf IPアドレス格納エリア
-     * @param int &$p_port ポート番号格納エリア
-     * @return bool true（成功） or false（失敗）
-     */
-    public function getSockName($p_handle, string &$p_ip_buf, int &$p_port): bool
-    {
-        // アンマネージドにするか@@@
-        // $ip_buf = $this->ffi->new("char[22]");
-        // $port_ptr = $this->ffi->new("unsigned short");
-
-        // $ret = $this->ffi->io_getsockname(FFI::addr($this->ctx), $p_handle, $ip_buf, FFI::addr($port_ptr));
-        // if($ret < 0)
-        // {
-        //     return false;
-        // }
-
-        // $p_ip_buf = FFI::string($ip_buf);
-        // $p_port = $port_ptr->cdata;
-
-        return true;
-    }
 }

@@ -62,16 +62,6 @@ class AffinedUdpManager extends CoreSocketManager
     private int $internal_rcvbuf_sz = 2048; // 2K（MTU + α）
 
     /**
-     * 待ち受けソケットリソース
-     */
-    // private $await_socket = null;   // @@@
-
-    /**
-     * 待ち受けソケットハンドル
-     */
-    // private ?int $await_handle = null;  // @@@
-
-    /**
      * クライアントソケットリソースのリスト
      */
     private array $sockets = [];
@@ -435,7 +425,7 @@ class AffinedUdpManager extends CoreSocketManager
             return false;
         }
 
-        /** @var \SplQueue */
+        /** @var SplQueue */
         $que = $this->descriptors[$p_cid]['recv_buffers'];
 
         if($que->isEmpty())

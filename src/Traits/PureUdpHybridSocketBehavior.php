@@ -8,6 +8,7 @@
 namespace SocketManager\Library\Traits;
 
 use Exception;
+use SplQueue;
 use SocketManager\Library\LogMessageEnum;
 use SocketManager\Library\UnitKindEnum;
 use SocketManager\Library\ProtocolQueueEnum;
@@ -48,14 +49,6 @@ trait PureUdpHybridSocketBehavior
      * @param array $p_param ログパラメータ
      */
     abstract public function logWriter(string $p_level, array $p_param);
-
-    /**
-     * リモートホストを基にbindアドレスの自動選択
-     * 
-     * @param string $p_remote_host リモートホスト
-     * @return string bindアドレス
-     */
-    abstract private function selectBindHost(string $p_remote_host): string;
 
     /**
      * ソケットディスクリプタの生成
@@ -112,10 +105,10 @@ trait PureUdpHybridSocketBehavior
      * 
      * @param string $p_host ホスト名
      * @param int $p_port ポート番号
-     * @param int $p_local_port ローカルポート番号
+     * @param string $p_local_host ローカルホスト
      * @return string|bool リソースID or false（失敗）
      */
-    public function connect(string $p_host, int $p_port, int $p_local_port = 15000): string|bool
+    public function connect(string $p_host, int $p_port, string $p_local_host = '127.0.0.1'): string|bool
     {
         $host = trim($p_host);
         if(!filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4))
@@ -180,11 +173,8 @@ trait PureUdpHybridSocketBehavior
             return false;
         }
 
-        // 宛先に応じて bind IP を決定
-        $bind_host = $this->selectBindHost($host);
-
         // bind socket to specified host
-        $w_ret = socket_bind($soc, $bind_host, $p_local_port);
+        $w_ret = socket_bind($soc, $p_local_host, 0);
         if($w_ret === false)
         {
             $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
@@ -332,7 +322,7 @@ trait PureUdpHybridSocketBehavior
                     if($w_ret === true)
                     {
                         // ACCEPT時のキュー名設定
-                        $w_ret = $this->setQueueNameForStart(UnitKindEnum::PROTOCOL, $this->descriptor[$key]['connection_id'], ProtocolQueueEnum::ACCEPT->value);
+                        $w_ret = $this->setQueueNameForStart(UnitKindEnum::PROTOCOL, $this->descriptors[$key]['connection_id'], ProtocolQueueEnum::ACCEPT->value);
                         if($w_ret === false)
                         {   // 不正だと見なして緊急切断
                             $this->logWriter('error', [__METHOD__ => LogMessageEnum::QUEUE_START_FAIL->message($this->lang), 'cid' => $key]);
@@ -393,12 +383,12 @@ trait PureUdpHybridSocketBehavior
             ];
 
             /**
-             * @var \SplQueue 受信バッファへ追加
+             * @var SplQueue 受信バッファへ追加
              */
             $que = $this->descriptors[$buffering_key]['recv_buffers'];
             if($que->count() > $this->internal_max_packets)
             {   // 件数超過で緊急切断
-                $this->logWriter('error', [__METHOD__ => LogMessageEnum::PACKETS_LIMIT_OVER->message($this->lang), 'cid' => $this->descriptor[$buffering_key]['connection_id']]);
+                $this->logWriter('error', [__METHOD__ => LogMessageEnum::PACKETS_LIMIT_OVER->message($this->lang), 'cid' => $this->descriptors[$buffering_key]['connection_id']]);
                 $this->emergencyShutdown(UnitKindEnum::ENGINE, $buffering_key);
                 continue;
             }

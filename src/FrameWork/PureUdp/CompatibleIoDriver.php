@@ -129,7 +129,8 @@ class CompatibleIoDriver implements IIoDriver
     private function ioRecvAwait(): array|false
     {
         $ret = [];
-        $buf = $host = $port = null;
+        $buf = $host = '';
+        $port = -1;
         $len = $this->manager->ioRecv($this->sockets[0], $buf, $host, $port);
         if($len === null)
         {
@@ -138,6 +139,11 @@ class CompatibleIoDriver implements IIoDriver
         if($len === false)
         {
             return false;
+        }
+        else
+        if($len === 0)
+        {
+            $type = 'disconnect';
         }
 
         $ret[] = [
@@ -167,7 +173,8 @@ class CompatibleIoDriver implements IIoDriver
         {
             $type = 'read';
 
-            $buf = $host = $port = null;
+            $buf = $host = '';
+            $port = -1;
             $len = $this->manager->ioRecv($soc, $buf, $host, $port);
             if($len === null)
             {

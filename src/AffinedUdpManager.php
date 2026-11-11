@@ -490,6 +490,21 @@ class AffinedUdpManager extends CoreSocketManager
     //--------------------------------------------------------------------------
 
     /**
+     * 現在のクライアント数を取得
+     * 
+     * @return int クライアント数
+     */
+    public function getClientCount(): int
+    {
+        $cnt = count($this->descriptors);
+        if($this->await_cid)
+        {
+            $cnt--;
+        }
+        return $cnt;
+    }
+
+    /**
      * 周期ドリブン処理の実行
      * 
      * @param int $p_cycle_interval 周期インターバルタイム（マイクロ秒）

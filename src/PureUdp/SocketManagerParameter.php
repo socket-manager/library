@@ -7,6 +7,8 @@
 
 namespace SocketManager\Library\PureUdp;
 
+use SocketManager\Library\UnitException;
+use SocketManager\Library\UnitExceptionEnum;
 use SocketManager\Library\UnitKindEnum;
 use SocketManager\Library\CoreSocketManager;
 use SocketManager\Library\PureUdpManager;
@@ -62,12 +64,6 @@ class SocketManagerParameter extends UnitParameter
      */
     final public function getLocalAddr(?string &$p_host, ?int &$p_port): bool
     {
-        if($this->manager->getAwaitSocket() !== null)
-        {
-            $p_host = $this->manager->getAwaitHost();
-            $p_port = $this->manager->getAwaitPort();
-            return true;
-        }
         return $this->manager->getSockName($this->cid, $p_host, $p_port);
     }
 

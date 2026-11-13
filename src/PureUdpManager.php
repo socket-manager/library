@@ -646,8 +646,10 @@ class PureUdpManager extends CoreSocketManager
             /**
              * IO受信バッファ  
              * [
-             *      'dat' => '',
-             *      'len' => 0,
+             *      'data' => <受信データ>,
+             *      'size' => <データサイズ>,
+             *      'host' => <ホストIP>,
+             *      'port' => <ポート番号>,
              * ]
              */
             'recv_buffers' => new SplQueue(),
@@ -708,13 +710,6 @@ class PureUdpManager extends CoreSocketManager
 
         // ディスクリプタをセット
         $this->descriptors[$p_cid] = $desc;
-
-        // ノンブロッキングの設定
-        $w_ret = socket_set_nonblock($p_soc);
-        if($w_ret === false) {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::NONBLOCK_SETTING_FAIL->message($this->lang), 'cid' => $p_cid]);
-            return false;
-        }
 
         // キューの設定がない場合は抜ける
         if($this->cycle_driven_for_engine !== null)
@@ -855,7 +850,7 @@ class PureUdpManager extends CoreSocketManager
             // アライブチェック
             if($alive_check === 0)  // プロトコル部実行中のタイムアウトを検査
             {
-                if($flg_exec === true && $p_alive_interval > 0)
+                if(($flg_exec === true || $flg_exec === null) && $p_alive_interval > 0) // プロトコル部実行制限中であってもチェックを行う
                 {
                     // 実行中タイムアウト判定
                     $dif = time() - $timestamp;
@@ -1065,4 +1060,3 @@ class PureUdpManager extends CoreSocketManager
         return true;
     }
 }
-

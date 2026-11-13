@@ -351,52 +351,70 @@ class PureUdpManager extends CoreSocketManager
             }
         }
 
-        // Create TCP/IP sream socket
-        $w_ret = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
-        if($w_ret === false)
+        $soc = null;
+        $err_msg = null;
+        do
         {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket()]);
-            return false;
-        }
-        $soc = $w_ret;
+            // Create datagram socket
+            $w_ret = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
+            if($w_ret === false)
+            {
+                $err_msg = LogMessageEnum::SOCKET_ERROR->socket();
+                break;
+            }
+            $soc = $w_ret;
 
-        // ノンブロッキングの設定
-        $w_ret = socket_set_nonblock($soc);
-        if($w_ret === false)
-        {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::NONBLOCK_SETTING_FAIL->message($this->lang)]);
-            return false;
-        }
+            // ノンブロッキングの設定
+            $w_ret = socket_set_nonblock($soc);
+            if($w_ret === false)
+            {
+                $err_msg = LogMessageEnum::NONBLOCK_SETTING_FAIL->message($this->lang);
+                break;
+            }
 
-        // reuseable port
-        $w_ret = socket_set_option($soc, SOL_SOCKET, SO_REUSEADDR, 1);
-        if($w_ret === false)
-        {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_OPTION_SETTING_FAIL->message($this->lang)]);
-            return false;
-        }
+            // reuseable port
+            $w_ret = socket_set_option($soc, SOL_SOCKET, SO_REUSEADDR, 1);
+            if($w_ret === false)
+            {
+                $err_msg = LogMessageEnum::SOCKET_OPTION_SETTING_FAIL->message($this->lang);
+                break;
+            }
 
-        // buffer size
-        $w_ret = socket_set_option($soc, SOL_SOCKET, SO_RCVBUF, $this->os_rcvbuf_sz);
-        if($w_ret === false)
-        {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_OPTION_SETTING_FAIL->message($this->lang)]);
-            return false;
-        }
+            // buffer size
+            $w_ret = socket_set_option($soc, SOL_SOCKET, SO_RCVBUF, $this->os_rcvbuf_sz);
+            if($w_ret === false)
+            {
+                $err_msg = LogMessageEnum::SOCKET_OPTION_SETTING_FAIL->message($this->lang);
+                break;
+            }
 
-        // buffer size
-        $w_ret = socket_set_option($soc, SOL_SOCKET, SO_SNDBUF, $this->os_sndbuf_sz);
-        if($w_ret === false)
-        {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_OPTION_SETTING_FAIL->message($this->lang)]);
-            return false;
-        }
+            // buffer size
+            $w_ret = socket_set_option($soc, SOL_SOCKET, SO_SNDBUF, $this->os_sndbuf_sz);
+            if($w_ret === false)
+            {
+                $err_msg = LogMessageEnum::SOCKET_OPTION_SETTING_FAIL->message($this->lang);
+                break;
+            }
 
-        // bind socket to specified host
-        $w_ret = socket_bind($soc, $this->await_host, $this->await_port);
-        if($w_ret === false)
+            // bind socket to specified host
+            $w_ret = socket_bind($soc, $this->await_host, $this->await_port);
+            if($w_ret === false)
+            {
+                $err_msg = LogMessageEnum::SOCKET_ERROR->socket($soc);
+                break;
+            }
+        }
+        while(false);
+        if($err_msg !== null)
         {
-            $this->logWriter('error', [__METHOD__ => LogMessageEnum::SOCKET_ERROR->socket($soc)]);
+            $this->logWriter('error', [__METHOD__ => $err_msg]);
+
+            // ソケットリソースの解放
+            if($soc !== null)
+            {
+                @socket_close($soc);
+            }
+
             return false;
         }
 

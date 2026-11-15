@@ -172,43 +172,6 @@ class NativeIoDriver implements IIoDriver
 
                 // C 側で malloc した per-event バッファを解放
                 $this->ffi->io_free($ev->user_data);
-
-                // @@@ioRecvの廃止
-                // if((int)$ev->bytes > 0)
-                // {
-                //     $pkt = $this->ffi->cast("udp_accept_t*", $ev->user_data);
-
-                //     $host  = FFI::string($pkt->ip);
-                //     $port  = $pkt->port;
-                //     $bytes = $pkt->data_len;
-                //     $data_p = $this->ffi->cast("char*", $pkt->data);
-                //     $data   = FFI::string($data_p, $bytes);
-
-                //     // C 側で malloc した per-event バッファを解放
-                //     $this->ffi->io_free($ev->user_data);
-                // }
-                // else
-                // {
-                //     $len = $this->manager->ioRecv($soc, $data, $host, $port);
-                //     if($len === null)
-                //     {
-                //         continue;
-                //     }
-                //     else
-                //     if($len === false)
-                //     {
-                //         $type = 'error';
-                //     }
-                //     else
-                //     if($len === 0)
-                //     {
-                //         $type = 'disconnect';
-                //     }
-                //     else
-                //     {
-                //         $bytes = $len;
-                //     }
-                // }
             }
             else
             if($ev->event_type === 2)

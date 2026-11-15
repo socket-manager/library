@@ -109,19 +109,6 @@ class CompatibleIoDriver implements IIoDriver
     }
 
     /**
-     * ソケットのアドレス情報取得
-     * 
-     * @param $p_handle ソケットハンドル
-     * @param string &$p_ip_buf IPアドレス格納エリア
-     * @param int &$p_port ポート番号格納エリア
-     * @return bool true（成功） or false（失敗）
-     */
-    public function getSockName($p_handle, string &$p_ip_buf, int &$p_port): bool
-    {
-        return true;    // I/Fを合わせるための実装
-    }
-
-    /**
      * 受信データをイベントデータへ変換（待ち受けポートから受信）  
      * 
      * @return array|false array:イベントリスト or false:失敗

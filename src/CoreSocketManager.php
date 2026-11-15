@@ -160,11 +160,6 @@ abstract class CoreSocketManager
      */
     protected int $internal_max_packets = 64;
 
-    /**
-     * UNITパラメータ
-     */
-    // protected ?UnitParameter $unit_parameter = null; // @@@
-
 
     //--------------------------------------------------------------------------
     // 【メソッド】

@@ -58,12 +58,19 @@ class SocketManagerParameter extends UnitParameter
     /**
      * ローカルアドレスの取得
      * 
-     * @param ?string &$p_host リモートホスト
-     * @param ?int &$p_port リモートポート
+     * @param ?string &$p_host ローカルホスト
+     * @param ?int &$p_port ローカルポート
      * @return bool true（成功） or false（失敗）
      */
     final public function getLocalAddr(?string &$p_host, ?int &$p_port): bool
     {
+        $soc = $this->manager->getAwaitSocket();
+        if($soc !== null)
+        {
+            $p_host = $this->manager->getAwaitHost();
+            $p_port = $this->manager->getAwaitPort();
+            return true;
+        }
         return $this->manager->getSockName($this->cid, $p_host, $p_port);
     }
 

@@ -103,7 +103,7 @@ class SocketManagerParameter extends UnitParameter
      */
     final public function protocol(): IProtocolParameter
     {
-        if($this->kind === UnitKindEnum::PROTOCOL && $this->protocol !== null)
+        if($this->kind !== UnitKindEnum::COMMAND && $this->protocol !== null)
         {
             return $this->protocol;
         }
